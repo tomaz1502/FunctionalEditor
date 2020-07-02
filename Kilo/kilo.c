@@ -83,8 +83,6 @@ void editorRefresScreen() {
     write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
-
-
 //}}}
 
 /*** Input {{{ ***/
