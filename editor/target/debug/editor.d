@@ -1,1 +1,1 @@
-/home/tomaz/Área\ de\ Trabalho/Tom/FunctionalEditor/editor/target/debug/editor: /home/tomaz/Área\ de\ Trabalho/Tom/FunctionalEditor/editor/src/main.rs
+/home/tomaz/Área\ de\ Trabalho/Tom/FunctionalEditor/editor/target/debug/editor: /home/tomaz/Área\ de\ Trabalho/Tom/FunctionalEditor/editor/src/main.rs /home/tomaz/Área\ de\ Trabalho/Tom/FunctionalEditor/editor/src/mods/state.rs /home/tomaz/Área\ de\ Trabalho/Tom/FunctionalEditor/editor/src/mods/term.rs /home/tomaz/Área\ de\ Trabalho/Tom/FunctionalEditor/editor/src/mods.rs
