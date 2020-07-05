@@ -1,2 +1,2 @@
 # FunctionalEditor
-An Editor for functional programming languages (and a tutorial that I'm following from https://viewsourcecode.org/snaptoken/kilo/)
+An Editor for functional programming languages written in Rust (following this tutorial: https://viewsourcecode.org/snaptoken/kilo/)
