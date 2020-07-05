@@ -1,11 +1,5 @@
-#![allow(unused_imports)]
-#![allow(dead_code)]
-
-use std::process;
-use termion::event::Key;
 use termion::input::TermRead;
-use termion::raw::IntoRawMode;
-use std::io::{Write, stdout, stdin};
+use std::io::stdin;
 
 mod mods;
 

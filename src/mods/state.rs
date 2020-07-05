@@ -14,6 +14,9 @@ impl Clone for Row {
 }
 
 impl Row {
+    pub fn new() -> Row {
+        Row { chars: Vec::new(), }
+    }
     pub fn length(&self) -> usize {
         self.chars.len() + 3 as usize // because each line stars with a ~ and a blank space
     }
@@ -30,20 +33,21 @@ pub struct State {
     pub col: usize,
     pub max_row: usize,
     pub max_col: usize,
+    pub active_rows: usize,
     pub rows: Vec<Row>,
     pub stdout: termion::raw::RawTerminal<std::io::Stdout>
 }
 
 impl State {
     pub fn new(row: usize, col: usize, max_row: usize, max_col: usize) -> State {
-        let base_row = Row { chars: Vec::new(), };
         State {
             row,
             col,
             max_row,
             max_col,
+            active_rows: 1,
             stdout: stdout().into_raw_mode().unwrap(),
-            rows: vec![base_row; max_row as usize],
+            rows: vec![Row::new(); 1],
         }
     }
 
