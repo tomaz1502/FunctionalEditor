@@ -6,7 +6,6 @@ mod mods;
 use mods::state::State;
 use mods::term;
 
-
 fn main() {
     let stdin = stdin();
 

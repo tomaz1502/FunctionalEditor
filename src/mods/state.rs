@@ -45,9 +45,9 @@ impl State {
             col,
             max_row,
             max_col,
-            active_rows: 1,
+            active_rows: 2,
             stdout: stdout().into_raw_mode().unwrap(),
-            rows: vec![Row::new(); 1],
+            rows: vec![Row::new(); 3],
         }
     }
 
@@ -55,8 +55,8 @@ impl State {
         if self.row < 2 {
             self.row = 2;
         }
-        if self.row >= self.max_row {
-            self.row = self.max_row - 1;
+        if self.row > self.active_rows {
+            self.row = self.active_rows;
         }
         if self.col < 3 {
             self.col = 3;

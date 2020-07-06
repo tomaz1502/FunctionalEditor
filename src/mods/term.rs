@@ -2,6 +2,7 @@ use std::process;
 use std::io::Write;
 use termion::event::Key;
 use super::state::State;
+use super::state::Row;
 
 pub fn die(state: &mut State) {
     write!(state.stdout, "{}{}{}Goodbye!!!!!!!!!!!!!!",
@@ -39,9 +40,15 @@ fn interpret_char(c: char, state: &mut State) {
     state.move_cursor(0, 1);
 }
 
+fn interpret_enter(state: &mut State) {
+    state.rows.push(Row::new());
+    state.active_rows += 1;
+    state.move_cursor(1, 0);
+}
+
 pub fn interpret_key(key : Key, state: &mut State) {
     match key {
-        Key::Char('\x0A') => (), // enter
+        Key::Char('\x0A') => interpret_enter(state),
         Key::Char(c)      => interpret_char(c, state),
         Key::Left         => state.move_cursor(0, -1),
         Key::Right        => state.move_cursor(0,  1),
