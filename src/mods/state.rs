@@ -1,46 +1,9 @@
 use std::io::{Write, stdout};
-use std::fmt;
 use termion::raw::IntoRawMode;
 use termion::color;
 
 use super::config;
-
-pub struct Row {
-    pub chars: Vec<char>,
-}
-
-impl Clone for Row {
-    fn clone(&self) -> Row {
-        Row {
-            chars: self.chars.clone(),
-        }
-    }
-}
-
-impl fmt::Display for Row {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut to_print = String::new();
-        for &c in &self.chars {
-            to_print.push(c);
-        }
-        write!(f, "{}", to_print)
-    }
-}
-
-impl Row {
-    pub fn new() -> Row {
-        Row { chars: Vec::new(), }
-    }
-    pub fn from_source(source: Vec<char>) -> Row {
-        Row { chars: source, }
-    }
-    pub fn pop(&mut self) {
-        self.chars.pop();
-    }
-    pub fn push(&mut self, c: char) {
-        self.chars.push(c);
-    }
-}
+use super::row::Row;
 
 pub struct State {
     row: usize,
@@ -65,6 +28,38 @@ impl State {
         }
     }
 
+    pub fn row(&self) -> usize {
+        self.row
+    }
+
+    pub fn col(&self) -> usize {
+        self.col
+    }
+
+    pub fn row_length(&self, row: usize) -> usize {
+        self.rows[row].chars.len() + self.config.left_most()
+    }
+
+    pub fn current_row(&mut self) -> &mut Row {
+        &mut self.rows[self.row]
+    }
+
+    pub fn add_row(&mut self, to_add: Option<Vec<char>>) {
+        match to_add {
+            Some(row) => self.rows.push(Row::from_source(row)),
+            None      => self.rows.push(Row::new()),
+        }
+        self.active_rows += 1;
+        if self.active_rows <=  self.config.max_row() + self.vert_offset {
+            write!(self.stdout, "{}{}{}{}",
+                                 color::Fg(color::Yellow),
+                                 termion::cursor::Goto(1, self.active_rows as u16),
+                                 self.active_rows - 1,
+                                 color::Fg(color::Reset)).
+                                 unwrap();
+        }
+    }
+
     fn fix_cursor_bounds(&mut self) {
         if self.row < 2 {
             self.row = 2;
@@ -79,6 +74,11 @@ impl State {
             self.re_draw();
         }
 
+        else if self.row - 2 < self.vert_offset {
+            self.vert_offset = self.row - 2;
+            self.re_draw();
+        }
+
         if self.col < self.config.left_most() {
             self.col = self.config.left_most();
         }
@@ -87,22 +87,6 @@ impl State {
             self.col = self.row_length(self.row);
         }
 
-    }
-
-    pub fn row_length(&self, row: usize) -> usize {
-        self.rows[row].chars.len() + self.config.left_most()
-    }
-
-    pub fn row(&self) -> usize {
-        self.row
-    }
-
-    pub fn col(&self) -> usize {
-        self.col
-    }
-
-    pub fn current_row(&mut self) -> &mut Row {
-        &mut self.rows[self.row]
     }
 
     pub fn move_cursor(&mut self, row_delta: i8, col_delta: i8) {
@@ -115,7 +99,8 @@ impl State {
         self.row = row;
         self.col = col;
         self.fix_cursor_bounds();
-        write!(self.stdout, "{}", termion::cursor::Goto(self.col as u16, self.row as u16)).unwrap();
+        write!(self.stdout, "{}",
+               termion::cursor::Goto(self.col as u16, (self.row - self.vert_offset) as u16)).unwrap();
         self.stdout.flush().unwrap();
     }
 
@@ -128,7 +113,7 @@ impl State {
                    unwrap();
             write!(self.stdout, "{}{}{}",
                    termion::color::Fg(termion::color::Yellow),
-                   row + self.vert_offset,
+                   row + self.vert_offset - 1,
                    termion::color::Fg(termion::color::Reset)).
                    unwrap();
             write!(self.stdout, "{}{}",
@@ -137,20 +122,6 @@ impl State {
                    unwrap();
         }
         self.stdout.flush().unwrap();
-    }
-
-    pub fn add_row(&mut self, to_add: Option<Vec<char>>) {
-        match to_add {
-            Some(row) => self.rows.push(Row::from_source(row)),
-            None      => self.rows.push(Row::new()),
-        }
-        self.active_rows += 1;
-        write!(self.stdout, "{}{}{}{}",
-                             color::Fg(color::Yellow),
-                             termion::cursor::Goto(1, self.active_rows as u16),
-                             self.active_rows - 1,
-                             color::Fg(color::Reset)).
-                             unwrap();
     }
 }
 

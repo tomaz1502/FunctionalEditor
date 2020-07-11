@@ -104,7 +104,7 @@ pub fn interpret_key(key : Key, state: &mut State) {
         Key::Down         => state.move_cursor(1,  0),
         Key::PageUp       => state.move_cursor(2 - state.row() as i8, 0),
         Key::PageDown     => state.move_cursor(state.config.max_row() as i8, 0),
-        Key::Backspace    => { state.vert_offset += 1; state.re_draw(); },
+        Key::Backspace    => (),
         Key::Alt('q')     => die(state),
         _                 => (),
     }
