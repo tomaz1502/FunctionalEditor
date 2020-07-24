@@ -1,7 +1,7 @@
-use termion::input::TermRead;
 use std::env;
 use std::io::stdin;
 use std::process;
+use termion::input::TermRead;
 
 mod mods;
 
@@ -14,10 +14,7 @@ fn main() {
 
     let args: Vec<String> = env::args().collect();
 
-    // let (width, height) = termion::terminal_size().unwrap();
-    let dimensions = termion::terminal_size().unwrap();
-    let (width, height) = (dimensions.0 as usize, dimensions.1 as usize);
-
+    let (width, height) = termion::terminal_size().unwrap();
 
     let config = config::Config::new(&args, height, width).unwrap_or_else(|err| {
         println!("Problem parsing arguments: {}", err);
@@ -32,6 +29,5 @@ fn main() {
     for key in stdin.keys() {
         term::interpret_key(key.unwrap(), &mut state);
     }
-
     term::die(&mut state);
 }

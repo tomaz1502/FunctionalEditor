@@ -6,17 +6,17 @@ use super::config;
 use super::row::Row;
 
 pub struct State {
-    row: usize,
-    col: usize,
-    pub vert_offset: usize,
-    pub active_rows: usize,
+    row: u16,
+    col: u16,
+    pub vert_offset: u16,
+    pub active_rows: u16,
     pub rows: Vec<Row>,
     pub stdout: termion::raw::RawTerminal<std::io::Stdout>,
     pub config: config::Config,
 }
 
 impl State {
-    pub fn new(row: usize, col: usize, config: config::Config) -> State {
+    pub fn new(row: u16, col: u16, config: config::Config) -> State {
         State {
             row,
             col,
@@ -28,20 +28,20 @@ impl State {
         }
     }
 
-    pub fn row(&self) -> usize {
+    pub fn row(&self) -> u16 {
         self.row
     }
 
-    pub fn col(&self) -> usize {
+    pub fn col(&self) -> u16 {
         self.col
     }
 
-    pub fn row_length(&self, row: usize) -> usize {
-        self.rows[row].chars.len() + self.config.left_most()
+    pub fn row_length(&self, row: u16) -> u16 {
+        self.rows[row as usize].chars.len() as u16 + self.config.left_most()
     }
 
     pub fn current_row(&mut self) -> &mut Row {
-        &mut self.rows[self.row]
+        &mut self.rows[self.row as usize]
     }
 
     pub fn add_row(&mut self, to_add: Option<Vec<char>>) {
@@ -89,24 +89,24 @@ impl State {
 
     }
 
-    pub fn move_cursor(&mut self, row_delta: i8, col_delta: i8) {
-        let new_row = ((self.row as i8) + row_delta) as usize;
-        let new_col = ((self.col as i8) + col_delta) as usize;
+    pub fn move_cursor(&mut self, row_delta: i16, col_delta: i16) {
+        let new_row = ((self.row as i16) + row_delta) as u16;
+        let new_col = ((self.col as i16) + col_delta) as u16;
         self.go_to(new_row, new_col);
     }
 
-    pub fn go_to(&mut self, row: usize, col: usize) {
+    pub fn go_to(&mut self, row: u16, col: u16) {
         self.row = row;
         self.col = col;
         self.fix_cursor_bounds();
         write!(self.stdout, "{}",
-               termion::cursor::Goto(self.col as u16, (self.row - self.vert_offset) as u16)).unwrap();
+               termion::cursor::Goto(self.col, self.row - self.vert_offset)).unwrap();
         self.stdout.flush().unwrap();
     }
 
     pub fn re_draw(&mut self) {
 
-        for row in 2 .. (self.config.max_row() + 1) as usize  {
+        for row in 2 .. self.config.max_row() + 1  {
             write!(self.stdout, "{}{}",
                    termion::cursor::Goto(1, row as u16),
                    termion::clear::UntilNewline).
@@ -118,7 +118,7 @@ impl State {
                    unwrap();
             write!(self.stdout, "{}{}",
                    termion::cursor::Goto(self.config.left_most() as u16, row as u16),
-                   self.rows[row + self.vert_offset]).
+                   self.rows[(row + self.vert_offset) as usize]).
                    unwrap();
         }
         self.stdout.flush().unwrap();
