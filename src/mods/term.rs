@@ -25,6 +25,8 @@ pub fn die(state: &mut State) {
     process::exit(0);
 }
 
+/* Write the welcome message in the terminal, as well as all the '~'.
+ * Also, it handles input files given from the command line. */
 pub fn start_term(state: &mut State) {
     let welcome_message = "Welcome to the Functional Editor";
     let first_line_col = (state.config.max_col() as usize - welcome_message.len()) / 2;
@@ -64,6 +66,10 @@ pub fn start_term(state: &mut State) {
     state.stdout.flush().unwrap();
 }
 
+
+/* Given the text from a external file (input_text), write it's contexts on the string
+ * and add the  necessary rows in state, with its contents. This function was only tested
+ * when called by start_term */
 fn draw_file(state: &mut State, input_text: String) {
     let mut buffer: Vec<char> = Vec::new();
     for ch in input_text.chars() {
@@ -86,9 +92,9 @@ fn draw_file(state: &mut State, input_text: String) {
 fn interpret_char(c: char, state: &mut State) {
     print!("{}", c);
 
-    if state.row_length(state.row()) > state.config.max_col() - 2 {
-        state.current_row().pop();
-    }
+//     if state.row_length(state.row()) > state.config.max_col() - 2 {
+//         state.current_row().pop();
+//     }
 
     state.current_row().push(c);
     state.move_cursor(0, 1);

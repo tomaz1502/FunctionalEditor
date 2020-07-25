@@ -9,6 +9,7 @@ pub struct State {
     row: u16,
     col: u16,
     pub vert_offset: u16,
+    pub hor_offset: u16,
     pub active_rows: u16,
     pub rows: Vec<Row>,
     pub stdout: termion::raw::RawTerminal<std::io::Stdout>,
@@ -22,6 +23,7 @@ impl State {
             col,
             config,
             vert_offset: 0,
+            hor_offset:  0,
             active_rows: 2,
             stdout: stdout().into_raw_mode().unwrap(),
             rows: vec![Row::new(); 3],
@@ -87,6 +89,16 @@ impl State {
             self.col = self.row_length(self.row);
         }
 
+        if self.col > self.config.max_col() + self.hor_offset {
+            self.hor_offset = self.col - self.config.max_col();
+            self.re_draw();
+        }
+        
+        else if self.col < self.hor_offset + self.config.left_most() {
+            self.hor_offset = self.col - self.config.left_most(); // ?
+            self.re_draw();
+        }
+
     }
 
     pub fn move_cursor(&mut self, row_delta: i16, col_delta: i16) {
@@ -100,13 +112,33 @@ impl State {
         self.col = col;
         self.fix_cursor_bounds();
         write!(self.stdout, "{}",
-               termion::cursor::Goto(self.col, self.row - self.vert_offset)).unwrap();
+               termion::cursor::Goto(self.col - self.hor_offset, self.row - self.vert_offset)).unwrap();
         self.stdout.flush().unwrap();
     }
 
     pub fn re_draw(&mut self) {
+        for row in 2 ..= self.config.max_row() {
+            if row > self.active_rows {
+                break;
+            }
 
-        for row in 2 .. self.config.max_row() + 1  {
+            let mut line_print = String::new();
+            let active_row = &self.rows[(row + self.vert_offset) as usize];
+            write!(self.config.log, "{}\n", row).unwrap();
+
+            if active_row.chars.len() > self.hor_offset as usize {
+                let left_border = self.hor_offset as usize;
+                let mut right_border = left_border + (self.config.max_col() - self.config.left_most()) as usize; // ?
+                if right_border > active_row.chars.len() {
+                    right_border = active_row.chars.len();
+                }
+
+                let active_chs = &active_row.chars[left_border .. right_border];
+                for &ch in active_chs {
+                    line_print.push(ch);
+                }
+            }
+
             write!(self.stdout, "{}{}",
                    termion::cursor::Goto(1, row as u16),
                    termion::clear::UntilNewline).
@@ -118,7 +150,7 @@ impl State {
                    unwrap();
             write!(self.stdout, "{}{}",
                    termion::cursor::Goto(self.config.left_most() as u16, row as u16),
-                   self.rows[(row + self.vert_offset) as usize]).
+                   line_print).
                    unwrap();
         }
         self.stdout.flush().unwrap();

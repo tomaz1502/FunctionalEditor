@@ -3,6 +3,7 @@ use std::fs;
 pub struct Config {
     pub file: Option<String>,
     pub text: Option<String>,
+    pub log: fs::File,
     max_col: u16,
     max_row: u16,
     left_most: u16,
@@ -22,6 +23,7 @@ impl Config {
                 Ok(ft)  => Ok(Config {
                                        file: Some(file_name),
                                        text: Some(ft),
+                                       log: fs::File::create("log").unwrap(),
                                        max_col,
                                        max_row,
                                        left_most: 4
@@ -33,6 +35,7 @@ impl Config {
             Ok(Config {
                         file: None,
                         text: None,
+                        log: fs::File::create("log").unwrap(),
                         max_row,
                         max_col,
                         left_most: 4,
