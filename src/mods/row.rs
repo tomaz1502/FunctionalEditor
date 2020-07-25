@@ -29,9 +29,6 @@ impl Row {
     pub fn from_source(source: Vec<char>) -> Row {
         Row { chars: source, }
     }
-    pub fn pop(&mut self) {
-        self.chars.pop();
-    }
     pub fn push(&mut self, c: char) {
         self.chars.push(c);
     }

@@ -67,8 +67,8 @@ pub fn start_term(state: &mut State) {
 }
 
 
-/* Given the text from a external file (input_text), write it's contexts on the string
- * and add the  necessary rows in state, with its contents. This function was only tested
+/* Given the text from a external file (input_text), write it's contexts on the screen
+ * and add the necessary rows in state, with its contents. This function was only tested
  * when called by start_term */
 fn draw_file(state: &mut State, input_text: String) {
     let mut buffer: Vec<char> = Vec::new();

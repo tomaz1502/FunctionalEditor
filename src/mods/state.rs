@@ -62,6 +62,8 @@ impl State {
         }
     }
 
+    /* Make sure that self.row and self.col is on a valid position of the file.
+     * In case it get off the screen we increase the offset and re_draw (scroll). */
     fn fix_cursor_bounds(&mut self) {
         if self.row < 2 {
             self.row = 2;
@@ -85,7 +87,7 @@ impl State {
             self.col = self.config.left_most();
         }
 
-        if self.col > self.row_length(self.row) { // make sure that row_length <= max_col
+        if self.col > self.row_length(self.row) {
             self.col = self.row_length(self.row);
         }
 
@@ -124,7 +126,6 @@ impl State {
 
             let mut line_print = String::new();
             let active_row = &self.rows[(row + self.vert_offset) as usize];
-            write!(self.config.log, "{}\n", row).unwrap();
 
             if active_row.chars.len() > self.hor_offset as usize {
                 let left_border = self.hor_offset as usize;
