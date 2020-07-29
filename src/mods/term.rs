@@ -1,12 +1,13 @@
 use std::io::Write;
 use std::iter::FromIterator;
 use std::process;
+use std::cmp;
 
-use termion::color;
 use termion::event::Key;
 
 use super::state::State;
 
+/* Turn the terminal back from Raw mode and ends the program */
 pub fn die(state: &mut State) {
     let goodbye_message = "Good Bye!";
     let first_line_col = (state.config.max_col() as usize - goodbye_message.len()) / 2;
@@ -41,17 +42,9 @@ pub fn start_term(state: &mut State) {
     )
     .unwrap();
 
-    write!(
-        state.stdout,
-        "{}{}{}{}",
-        color::Fg(color::Yellow),
-        termion::cursor::Goto(1, 2),
-        1,
-        color::Fg(color::Reset)
-    )
-    .unwrap();
+    state.add_row(None);
 
-    for row in 3..=state.config.max_row() as u16 {
+    for row in 3 ..= state.config.max_row() as u16 {
         write!(state.stdout, "{}", termion::cursor::Goto(1, row)).unwrap();
         print!("~")
     }
@@ -66,16 +59,20 @@ pub fn start_term(state: &mut State) {
     state.stdout.flush().unwrap();
 }
 
-
 /* Given the text from a external file (input_text), write it's contexts on the screen
  * and add the necessary rows in state, with its contents. This function was only tested
  * when called by start_term */
 fn draw_file(state: &mut State, input_text: String) {
     let mut buffer: Vec<char> = Vec::new();
     for ch in input_text.chars() {
-        if ch == '\n' || buffer.len() >= state.config.max_col() as usize - 1 {
-            let line = String::from_iter(buffer.iter());
+        if ch == '\n' {
+            let visible_border = cmp::min((state.config.max_col() - 2) as usize, buffer.len());
+            let visible_range = &buffer[0 .. visible_border];
+            
+            let line = String::from_iter((&visible_range).iter());
             write!(state.stdout, "{}", line).unwrap();
+
+            write!(state.config.log, "{}", buffer.len()).unwrap();
 
             state.add_row(Some(buffer));
             state.move_cursor(1, 0);
@@ -83,7 +80,7 @@ fn draw_file(state: &mut State, input_text: String) {
             buffer = Vec::new();
         }
 
-        if ch != '\n' {
+        else {
             buffer.push(ch);
         }
     }
@@ -91,10 +88,6 @@ fn draw_file(state: &mut State, input_text: String) {
 
 fn interpret_char(c: char, state: &mut State) {
     print!("{}", c);
-
-//     if state.row_length(state.row()) > state.config.max_col() - 2 {
-//         state.current_row().pop();
-//     }
 
     state.current_row().push(c);
     state.move_cursor(0, 1);

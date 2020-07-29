@@ -21,7 +21,7 @@ fn main() {
         process::exit(1);
     });
 
-    let mut state = State::new(2, 3, config);
+    let mut state = State::new(2, config.left_most(), config);
 
     term::start_term(&mut state);
     // termion::async_stdin();
@@ -29,5 +29,6 @@ fn main() {
     for key in stdin.keys() {
         term::interpret_key(key.unwrap(), &mut state);
     }
+
     term::die(&mut state);
 }

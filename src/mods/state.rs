@@ -24,7 +24,7 @@ impl State {
             config,
             vert_offset: 0,
             hor_offset:  0,
-            active_rows: 2,
+            active_rows: 1,
             stdout: stdout().into_raw_mode().unwrap(),
             rows: vec![Row::new(); 3],
         }
@@ -51,6 +51,7 @@ impl State {
             Some(row) => self.rows.push(Row::from_source(row)),
             None      => self.rows.push(Row::new()),
         }
+
         self.active_rows += 1;
         if self.active_rows <=  self.config.max_row() + self.vert_offset {
             write!(self.stdout, "{}{}{}{}",
