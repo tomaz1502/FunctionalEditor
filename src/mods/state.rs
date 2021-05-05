@@ -101,7 +101,6 @@ impl State {
             self.hor_offset = self.col - self.config.left_most(); // ?
             self.re_draw();
         }
-
     }
 
     pub fn move_cursor(&mut self, row_delta: i16, col_delta: i16) {

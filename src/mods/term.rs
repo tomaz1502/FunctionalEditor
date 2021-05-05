@@ -1,7 +1,7 @@
+use std::cmp;
 use std::io::Write;
 use std::iter::FromIterator;
 use std::process;
-use std::cmp;
 
 use termion::event::Key;
 
@@ -9,8 +9,8 @@ use super::state::State;
 
 /* Turn the terminal back from Raw mode and ends the program */
 pub fn die(state: &mut State) {
-    let goodbye_message = "Good Bye!";
-    let first_line_col = (state.config.max_col() as usize - goodbye_message.len()) / 2;
+    let goodbye_message: &str = "Good Bye!";
+    let first_line_col: usize = (state.config.max_col() as usize - goodbye_message.len()) / 2;
 
     write!(
         state.stdout,
@@ -18,11 +18,14 @@ pub fn die(state: &mut State) {
         termion::cursor::Show,
         termion::clear::All,
         termion::cursor::Goto(first_line_col as u16, 1),
-        goodbye_message)
-        .unwrap();
+        goodbye_message
+    )
+    .unwrap();
 
+    write!(state.stdout, "{}", termion::cursor::Goto(1,2)).unwrap();
     state.stdout.flush().unwrap();
     state.stdout.suspend_raw_mode().unwrap();
+
     process::exit(0);
 }
 
@@ -44,7 +47,7 @@ pub fn start_term(state: &mut State) {
 
     state.add_row(None);
 
-    for row in 3 ..= state.config.max_row() as u16 {
+    for row in 3..=state.config.max_row() as u16 {
         write!(state.stdout, "{}", termion::cursor::Goto(1, row)).unwrap();
         print!("~")
     }
@@ -67,8 +70,8 @@ fn draw_file(state: &mut State, input_text: String) {
     for ch in input_text.chars() {
         if ch == '\n' {
             let visible_border = cmp::min((state.config.max_col() - 2) as usize, buffer.len());
-            let visible_range = &buffer[0 .. visible_border];
-            
+            let visible_range = &buffer[0..visible_border];
+
             let line = String::from_iter((&visible_range).iter());
             write!(state.stdout, "{}", line).unwrap();
 
@@ -78,9 +81,7 @@ fn draw_file(state: &mut State, input_text: String) {
             state.move_cursor(1, 0);
 
             buffer = Vec::new();
-        }
-
-        else {
+        } else {
             buffer.push(ch);
         }
     }
@@ -109,7 +110,7 @@ pub fn interpret_key(key: Key, state: &mut State) {
         Key::PageUp => state.move_cursor(2 - state.row() as i16, 0),
         Key::PageDown => state.move_cursor(state.config.max_row() as i16, 0),
         Key::Backspace => (),
-        Key::Alt('q') => die(state),
+        Key::Alt('q') => die(state), // die(state),
         _ => (),
     }
 }
