@@ -24,13 +24,12 @@ impl fmt::Display for Row {
 
 impl Row {
     pub fn new() -> Row {
-        Row { chars: Vec::new(), }
+        Row { chars: Vec::new() }
     }
     pub fn from_vec(source: Vec<char>) -> Row {
-        Row { chars: source, }
+        Row { chars: source }
     }
     pub fn push(&mut self, c: char) {
         self.chars.push(c);
     }
 }
-

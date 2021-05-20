@@ -18,24 +18,23 @@ impl Config {
             let file_name = args[1].clone();
             let file_text = fs::read_to_string(&file_name);
             match file_text {
-                Ok(ft)  => Ok(Config {
-                                       file: Some(file_name),
-                                       text: Some(ft),
-                                       max_col,
-                                       max_row,
-                                       left_most: 4
-                                     }),
-                Err(_) => Err("File not found!") 
+                Ok(ft) => Ok(Config {
+                    file: Some(file_name),
+                    text: Some(ft),
+                    max_col,
+                    max_row,
+                    left_most: 4,
+                }),
+                Err(_) => Err("File not found!"),
             }
-        }
-        else {
+        } else {
             Ok(Config {
-                        file: None,
-                        text: None,
-                        max_row,
-                        max_col,
-                        left_most: 4,
-                      })
+                file: None,
+                text: None,
+                max_row,
+                max_col,
+                left_most: 4,
+            })
         }
     }
 

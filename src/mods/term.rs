@@ -1,11 +1,11 @@
 use std::cmp;
-use std::process;
 use std::io::Stdin;
 use std::io::Write;
 use std::iter::FromIterator;
+use std::process;
 
-use termion::input::TermRead;
 use termion::event::Key;
+use termion::input::TermRead;
 
 use super::state::State;
 
