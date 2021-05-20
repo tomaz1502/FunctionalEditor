@@ -26,7 +26,7 @@ impl Row {
     pub fn new() -> Row {
         Row { chars: Vec::new(), }
     }
-    pub fn from_source(source: Vec<char>) -> Row {
+    pub fn from_vec(source: Vec<char>) -> Row {
         Row { chars: source, }
     }
     pub fn push(&mut self, c: char) {

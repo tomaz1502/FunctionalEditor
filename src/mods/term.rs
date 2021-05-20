@@ -1,8 +1,10 @@
 use std::cmp;
+use std::process;
+use std::io::Stdin;
 use std::io::Write;
 use std::iter::FromIterator;
-use std::process;
 
+use termion::input::TermRead;
 use termion::event::Key;
 
 use super::state::State;
@@ -22,7 +24,7 @@ pub fn die(state: &mut State) {
     )
     .unwrap();
 
-    write!(state.stdout, "{}", termion::cursor::Goto(1,2)).unwrap();
+    write!(state.stdout, "{}", termion::cursor::Goto(1, 2)).unwrap();
     state.stdout.flush().unwrap();
     state.stdout.suspend_raw_mode().unwrap();
 
@@ -45,11 +47,12 @@ pub fn start_term(state: &mut State) {
     )
     .unwrap();
 
+    // First empty line
     state.add_row(None);
 
     for row in 3..=state.config.max_row() as u16 {
         write!(state.stdout, "{}", termion::cursor::Goto(1, row)).unwrap();
-        print!("~")
+        print!("~");
     }
 
     state.go_to(state.row(), state.col());
@@ -67,15 +70,13 @@ pub fn start_term(state: &mut State) {
  * when called by start_term */
 fn draw_file(state: &mut State, input_text: String) {
     let mut buffer: Vec<char> = Vec::new();
-    for ch in input_text.chars() {
-        if ch == '\n' {
+    for (i, ch) in input_text.chars().enumerate() {
+        if ch == '\n' || i == input_text.len() - 1 {
             let visible_border = cmp::min((state.config.max_col() - 2) as usize, buffer.len());
             let visible_range = &buffer[0..visible_border];
 
             let line = String::from_iter((&visible_range).iter());
             write!(state.stdout, "{}", line).unwrap();
-
-            write!(state.config.log, "{}", buffer.len()).unwrap();
 
             state.add_row(Some(buffer));
             state.move_cursor(1, 0);
@@ -112,5 +113,11 @@ pub fn interpret_key(key: Key, state: &mut State) {
         Key::Backspace => (),
         Key::Alt('q') => die(state), // die(state),
         _ => (),
+    }
+}
+
+pub fn run(stdin: Stdin, mut state: &mut State) {
+    for key in stdin.keys() {
+        interpret_key(key.unwrap(), &mut state);
     }
 }

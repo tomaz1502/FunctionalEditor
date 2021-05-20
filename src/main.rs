@@ -1,7 +1,6 @@
 use std::env;
 use std::io::stdin;
 use std::process;
-use termion::input::TermRead;
 
 mod mods;
 
@@ -10,6 +9,7 @@ use mods::state::State;
 use mods::term;
 
 fn main() {
+
     let stdin = stdin();
 
     let args: Vec<String> = env::args().collect();
@@ -26,7 +26,5 @@ fn main() {
     term::start_term(&mut state);
     // termion::async_stdin();
 
-    for key in stdin.keys() {
-        term::interpret_key(key.unwrap(), &mut state);
-    }
+    term::run(stdin, &mut state);
 }

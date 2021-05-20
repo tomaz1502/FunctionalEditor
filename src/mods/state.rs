@@ -48,7 +48,7 @@ impl State {
 
     pub fn add_row(&mut self, to_add: Option<Vec<char>>) {
         match to_add {
-            Some(row) => self.rows.push(Row::from_source(row)),
+            Some(row) => self.rows.push(Row::from_vec(row)),
             None      => self.rows.push(Row::new()),
         }
 
@@ -129,7 +129,7 @@ impl State {
 
             if active_row.chars.len() > self.hor_offset as usize {
                 let left_border = self.hor_offset as usize;
-                let mut right_border = left_border + (self.config.max_col() - self.config.left_most()) as usize; // ?
+                let mut right_border = left_border + (self.config.max_col() - self.config.left_most()) as usize;
                 if right_border > active_row.chars.len() {
                     right_border = active_row.chars.len();
                 }
