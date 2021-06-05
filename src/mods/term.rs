@@ -34,34 +34,25 @@ pub fn die(state: &mut State) {
 /* Write the welcome message in the terminal, as well as all the '~'.
  * Also, it handles input files given from the command line. */
 pub fn start_term(state: &mut State) {
-    let welcome_message = "Welcome to the Functional Editor";
-    let first_line_col = (state.config.max_col() as usize - welcome_message.len()) / 2;
-
     write!(
         state.stdout,
-        "{}{}{}{}",
+        "{}{}",
         termion::clear::All,
-        termion::cursor::Goto(first_line_col as u16, 1),
         termion::cursor::Show,
-        welcome_message
     )
     .unwrap();
 
-    // First empty line
-    state.add_row(None);
-
-    for row in 3..=state.config.max_row() as u16 {
-        write!(state.stdout, "{}", termion::cursor::Goto(1, row)).unwrap();
-        print!("~");
+    for row in 2..=state.config.max_row() as u16 {
+        write!(state.stdout, "{}~", termion::cursor::Goto(1, row)).unwrap();
     }
-
+    state.add_row(None);
+    eprintln!("{0} {1}", state.row(), state.col());
     state.go_to(state.row(), state.col());
 
     if let Some(input_text) = &state.config.text {
         let input_text_clone = input_text.clone();
         draw_file(state, input_text_clone);
     }
-
     state.stdout.flush().unwrap();
 }
 
@@ -108,10 +99,10 @@ pub fn interpret_key(key: Key, state: &mut State) {
         Key::Right => state.move_cursor(0, 1),
         Key::Up => state.move_cursor(-1, 0),
         Key::Down => state.move_cursor(1, 0),
-        Key::PageUp => state.move_cursor(2 - state.row() as i16, 0),
-        Key::PageDown => state.move_cursor(state.config.max_row() as i16, 0),
+        Key::PageUp => state.go_to(state.config.min_row(), state.col()),
+        Key::PageDown => state.go_to(state.active_rows, state.col()),
         Key::Backspace => (),
-        Key::Alt('q') => die(state), // die(state),
+        Key::Alt('q') => die(state),
         _ => (),
     }
 }

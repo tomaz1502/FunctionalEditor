@@ -5,7 +5,8 @@ pub struct Config {
     pub text: Option<String>,
     max_col: u16,
     max_row: u16,
-    left_most: u16,
+    min_col: u16,
+    min_row: u16,
 }
 
 impl Config {
@@ -23,7 +24,8 @@ impl Config {
                     text: Some(ft),
                     max_col,
                     max_row,
-                    left_most: 4,
+                    min_col: 4,
+                    min_row: 1,
                 }),
                 Err(_) => Err("File not found!"),
             }
@@ -33,13 +35,10 @@ impl Config {
                 text: None,
                 max_row,
                 max_col,
-                left_most: 4,
+                min_col: 4,
+                min_row: 1,
             })
         }
-    }
-
-    pub fn left_most(&self) -> u16 {
-        self.left_most
     }
 
     pub fn max_row(&self) -> u16 {
@@ -48,5 +47,13 @@ impl Config {
 
     pub fn max_col(&self) -> u16 {
         self.max_col
+    }
+    
+    pub fn min_col(&self) -> u16 {
+        self.min_col
+    }
+
+    pub fn min_row(&self) -> u16 {
+        self.min_row
     }
 }

@@ -24,7 +24,7 @@ impl State {
             config,
             vert_offset: 0,
             hor_offset: 0,
-            active_rows: 1,
+            active_rows: 0,
             stdout: stdout().into_raw_mode().unwrap(),
             rows: vec![Row::new(); 3],
         }
@@ -39,7 +39,7 @@ impl State {
     }
 
     pub fn row_length(&self, row: u16) -> u16 {
-        self.rows[row as usize].chars.len() as u16 + self.config.left_most()
+        self.rows[row as usize].chars.len() as u16 + self.config.min_col()
     }
 
     pub fn current_row(&mut self) -> &mut Row {
@@ -59,7 +59,7 @@ impl State {
                 "{}{}{}{}",
                 color::Fg(color::Yellow),
                 termion::cursor::Goto(1, self.active_rows as u16),
-                self.active_rows - 1,
+                self.active_rows,
                 color::Fg(color::Reset)
             )
             .unwrap();
@@ -69,8 +69,8 @@ impl State {
     /* Make sure that self.row and self.col is on a valid position of the file.
      * In case it get off the screen we increase the offset and re_draw (scroll). */
     fn fix_cursor_bounds(&mut self) {
-        if self.row < 2 {
-            self.row = 2;
+        if self.row < self.config.min_row() {
+            self.row = self.config.min_row();
         }
 
         if self.row > self.active_rows {
@@ -80,13 +80,13 @@ impl State {
         if self.row > self.config.max_row() + self.vert_offset {
             self.vert_offset = self.row - self.config.max_row();
             self.re_draw();
-        } else if self.row - 2 < self.vert_offset {
-            self.vert_offset = self.row - 2;
+        } else if self.row - self.config.min_row() < self.vert_offset {
+            self.vert_offset = self.row - self.config.min_row();
             self.re_draw();
         }
 
-        if self.col < self.config.left_most() {
-            self.col = self.config.left_most();
+        if self.col < self.config.min_col() {
+            self.col = self.config.min_col();
         }
 
         if self.col > self.row_length(self.row) {
@@ -96,8 +96,8 @@ impl State {
         if self.col > self.config.max_col() + self.hor_offset {
             self.hor_offset = self.col - self.config.max_col();
             self.re_draw();
-        } else if self.col < self.hor_offset + self.config.left_most() {
-            self.hor_offset = self.col - self.config.left_most(); // ?
+        } else if self.col < self.hor_offset + self.config.min_col() {
+            self.hor_offset = self.col - self.config.min_col(); // ?
             self.re_draw();
         }
     }
@@ -115,14 +115,15 @@ impl State {
         write!(
             self.stdout,
             "{}",
-            termion::cursor::Goto(self.col - self.hor_offset, self.row - self.vert_offset)
+            termion::cursor::Goto(self.col - self.hor_offset,
+                                  self.row - self.vert_offset)
         )
         .unwrap();
         self.stdout.flush().unwrap();
     }
 
     pub fn re_draw(&mut self) {
-        for row in 2..=self.config.max_row() {
+        for row in self.config.min_row()..=self.config.max_row() {
             if row > self.active_rows {
                 break;
             }
@@ -132,37 +133,30 @@ impl State {
 
             if active_row.chars.len() > self.hor_offset as usize {
                 let left_border = self.hor_offset as usize;
-                let mut right_border =
-                    left_border + (self.config.max_col() - self.config.left_most()) as usize;
-                if right_border > active_row.chars.len() {
-                    right_border = active_row.chars.len();
-                }
+                let right_border =
+                    std::cmp::min(
+                      left_border + (self.config.max_col() - self.config.min_col()) as usize,
+                      active_row.chars.len()
+                    );
 
-                let active_chs = &active_row.chars[left_border..right_border];
-                for &ch in active_chs {
-                    line_print.push(ch);
-                }
+                line_print = active_row.chars[left_border..right_border].iter()
+                                                                        .collect::<String>();
             }
 
             write!(
                 self.stdout,
-                "{}{}",
+                "{}{}{}{}{}",
                 termion::cursor::Goto(1, row as u16),
-                termion::clear::UntilNewline
-            )
-            .unwrap();
-            write!(
-                self.stdout,
-                "{}{}{}",
+                termion::clear::UntilNewline,
                 termion::color::Fg(termion::color::Yellow),
-                row + self.vert_offset - 1,
+                row + self.vert_offset,
                 termion::color::Fg(termion::color::Reset)
             )
             .unwrap();
             write!(
                 self.stdout,
                 "{}{}",
-                termion::cursor::Goto(self.config.left_most() as u16, row as u16),
+                termion::cursor::Goto(self.config.min_col() as u16, row as u16),
                 line_print
             )
             .unwrap();
