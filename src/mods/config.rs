@@ -3,14 +3,14 @@ use std::fs;
 pub struct Config {
     pub file: Option<String>,
     pub text: Option<String>,
-    max_col: u16,
-    max_row: u16,
+    width: u16,
+    height: u16,
     min_col: u16,
     min_row: u16,
 }
 
 impl Config {
-    pub fn new(args: &Vec<String>, max_row: u16, max_col: u16) -> Result<Config, &'static str> {
+    pub fn new(args: &Vec<String>, height: u16, width: u16) -> Result<Config, &'static str> {
         if args.len() > 3 {
             return Err("Too many arguments! Usage: cargo run file_name");
         }
@@ -22,8 +22,8 @@ impl Config {
                 Ok(ft) => Ok(Config {
                     file: Some(file_name),
                     text: Some(ft),
-                    max_col,
-                    max_row,
+                    width,
+                    height,
                     min_col: 4,
                     min_row: 1,
                 }),
@@ -33,20 +33,20 @@ impl Config {
             Ok(Config {
                 file: None,
                 text: None,
-                max_row,
-                max_col,
+                height,
+                width,
                 min_col: 4,
                 min_row: 1,
             })
         }
     }
 
-    pub fn max_row(&self) -> u16 {
-        self.max_row
+    pub fn height(&self) -> u16 {
+        self.height
     }
 
-    pub fn max_col(&self) -> u16 {
-        self.max_col
+    pub fn width(&self) -> u16 {
+        self.width
     }
     
     pub fn min_col(&self) -> u16 {

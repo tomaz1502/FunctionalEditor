@@ -1,4 +1,3 @@
-use std::cmp;
 use std::io::Stdin;
 use std::io::Write;
 use std::iter::FromIterator;
@@ -12,7 +11,7 @@ use super::state::State;
 /* Turn the terminal back from Raw mode and ends the program */
 pub fn die(state: &mut State) {
     let goodbye_message: &str = "Good Bye!";
-    let first_line_col: usize = (state.config.max_col() as usize - goodbye_message.len()) / 2;
+    let first_line_col: usize = (state.config.width() as usize - goodbye_message.len()) / 2;
 
     write!(
         state.stdout,
@@ -42,11 +41,10 @@ pub fn start_term(state: &mut State) {
     )
     .unwrap();
 
-    for row in 2..=state.config.max_row() as u16 {
+    for row in 2..=state.config.height() as u16 {
         write!(state.stdout, "{}~", termion::cursor::Goto(1, row)).unwrap();
     }
     state.add_row(None);
-    eprintln!("{0} {1}", state.row(), state.col());
     state.go_to(state.row(), state.col());
 
     if let Some(input_text) = &state.config.text {
@@ -60,22 +58,15 @@ pub fn start_term(state: &mut State) {
  * and add the necessary rows in state, with its contents. This function was only tested
  * when called by start_term */
 fn draw_file(state: &mut State, input_text: String) {
-    let mut buffer: Vec<char> = Vec::new();
-    for (i, ch) in input_text.chars().enumerate() {
-        if ch == '\n' || i == input_text.len() - 1 {
-            let visible_border = cmp::min((state.config.max_col() - 2) as usize, buffer.len());
-            let visible_range = &buffer[0..visible_border];
-
-            let line = String::from_iter((&visible_range).iter());
-            write!(state.stdout, "{}", line).unwrap();
-
-            state.add_row(Some(buffer));
-            state.move_cursor(1, 0);
-
-            buffer = Vec::new();
-        } else {
-            buffer.push(ch);
-        }
+    for line in input_text.lines() {
+        let right_border = std::cmp::min(
+                      (state.config.width() - state.config.min_col() + 1) as usize,
+                      line.len()
+                  );
+        let visible_line = &line[..right_border];
+        write!(state.stdout, "{}", visible_line).unwrap();
+        state.add_row(Some(line.chars().collect()));
+        state.move_cursor(1, 0);
     }
 }
 

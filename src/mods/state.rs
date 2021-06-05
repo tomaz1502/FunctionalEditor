@@ -53,12 +53,12 @@ impl State {
         }
 
         self.active_rows += 1;
-        if self.active_rows <= self.config.max_row() + self.vert_offset {
+        if self.active_rows <= self.config.height() + self.vert_offset {
             write!(
                 self.stdout,
                 "{}{}{}{}",
                 color::Fg(color::Yellow),
-                termion::cursor::Goto(1, self.active_rows as u16),
+                termion::cursor::Goto(1, self.active_rows),
                 self.active_rows,
                 color::Fg(color::Reset)
             )
@@ -77,8 +77,8 @@ impl State {
             self.row = self.active_rows;
         }
 
-        if self.row > self.config.max_row() + self.vert_offset {
-            self.vert_offset = self.row - self.config.max_row();
+        if self.row > self.config.height() + self.vert_offset {
+            self.vert_offset = self.row - self.config.height();
             self.re_draw();
         } else if self.row - self.config.min_row() < self.vert_offset {
             self.vert_offset = self.row - self.config.min_row();
@@ -93,8 +93,8 @@ impl State {
             self.col = self.row_length(self.row);
         }
 
-        if self.col > self.config.max_col() + self.hor_offset {
-            self.hor_offset = self.col - self.config.max_col();
+        if self.col > self.config.width() + self.hor_offset {
+            self.hor_offset = self.col - self.config.width();
             self.re_draw();
         } else if self.col < self.hor_offset + self.config.min_col() {
             self.hor_offset = self.col - self.config.min_col(); // ?
@@ -123,24 +123,9 @@ impl State {
     }
 
     pub fn re_draw(&mut self) {
-        for row in self.config.min_row()..=self.config.max_row() {
+        for row in 1..=self.config.height() { // iterating through visible rows
             if row > self.active_rows {
                 break;
-            }
-
-            let mut line_print = String::new();
-            let active_row = &self.rows[(row + self.vert_offset) as usize];
-
-            if active_row.chars.len() > self.hor_offset as usize {
-                let left_border = self.hor_offset as usize;
-                let right_border =
-                    std::cmp::min(
-                      left_border + (self.config.max_col() - self.config.min_col()) as usize,
-                      active_row.chars.len()
-                    );
-
-                line_print = active_row.chars[left_border..right_border].iter()
-                                                                        .collect::<String>();
             }
 
             write!(
@@ -153,13 +138,27 @@ impl State {
                 termion::color::Fg(termion::color::Reset)
             )
             .unwrap();
-            write!(
-                self.stdout,
-                "{}{}",
-                termion::cursor::Goto(self.config.min_col() as u16, row as u16),
-                line_print
-            )
-            .unwrap();
+            
+            let active_row = &self.rows[(row + self.vert_offset) as usize];
+            if active_row.chars.len() > self.hor_offset as usize {
+                let left_border = self.hor_offset as usize;
+                let right_border =
+                    std::cmp::min(
+                      left_border + (self.config.width() - self.config.min_col()) as usize,
+                      active_row.chars.len()
+                    );
+
+                let line_print: String =
+                    active_row.chars[left_border..right_border].iter()
+                                                               .collect();
+                write!(
+                    self.stdout,
+                    "{}{}",
+                    termion::cursor::Goto(self.config.min_col() as u16, row as u16),
+                    line_print
+                )
+                .unwrap();
+            }
         }
         self.stdout.flush().unwrap();
     }
