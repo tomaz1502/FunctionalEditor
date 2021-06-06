@@ -46,10 +46,10 @@ impl State {
         &mut self.rows[self.row as usize]
     }
 
-    pub fn add_row(&mut self, to_add: Option<Vec<char>>) {
+    pub fn insert_row(&mut self, index: usize, to_add: Option<Vec<char>>) {
         match to_add {
-            Some(row) => self.rows.push(Row::from_vec(row)),
-            None => self.rows.push(Row::new()),
+            Some(row) => self.rows.insert(index, Row::from_vec(row)),
+            None => self.rows.insert(index, Row::new()),
         }
 
         self.active_rows += 1;
@@ -64,6 +64,11 @@ impl State {
             )
             .unwrap();
         }
+
+    }
+
+    pub fn add_row(&mut self, to_add: Option<Vec<char>>) {
+        self.insert_row(self.rows.len(), to_add);
     }
 
     /* Make sure that self.row and self.col is on a valid position of the file.
