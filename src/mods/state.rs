@@ -10,7 +10,6 @@ pub struct State {
     col: u16,
     pub vert_offset: u16,
     pub hor_offset: u16,
-    pub active_rows: u16,
     pub rows: Vec<Row>,
     pub stdout: termion::raw::RawTerminal<std::io::Stdout>,
     pub config: config::Config,
@@ -24,9 +23,8 @@ impl State {
             config,
             vert_offset: 0,
             hor_offset: 0,
-            active_rows: 0,
             stdout: stdout().into_raw_mode().unwrap(),
-            rows: vec![Row::new(); 3],
+            rows: vec![Row::new(); 1], // rows are 1-based
         }
     }
 
@@ -46,25 +44,33 @@ impl State {
         &mut self.rows[self.row as usize]
     }
 
+    pub fn remove_row(&mut self, index: usize) {
+        if self.rows.len() as u16 <= self.config.height() + self.vert_offset {
+            write!(
+                self.stdout,
+                "{}~",
+                termion::cursor::Goto(1, self.rows.len() as u16 - 1),
+            ).unwrap();
+        }
+        self.rows.remove(index);
+    }
+
     pub fn insert_row(&mut self, index: usize, to_add: Option<Vec<char>>) {
         match to_add {
             Some(row) => self.rows.insert(index, Row::from_vec(row)),
             None => self.rows.insert(index, Row::new()),
         }
 
-        self.active_rows += 1;
-        if self.active_rows <= self.config.height() + self.vert_offset {
+        if self.rows.len() as u16 <= self.config.height() + self.vert_offset {
             write!(
                 self.stdout,
                 "{}{}{}{}",
                 color::Fg(color::Yellow),
-                termion::cursor::Goto(1, self.active_rows),
-                self.active_rows,
+                termion::cursor::Goto(1, self.rows.len() as u16 - 1),
+                self.rows.len() - 1,
                 color::Fg(color::Reset)
-            )
-            .unwrap();
+            ).unwrap();
         }
-
     }
 
     pub fn add_row(&mut self, to_add: Option<Vec<char>>) {
@@ -78,8 +84,8 @@ impl State {
             self.row = self.config.min_row();
         }
 
-        if self.row > self.active_rows {
-            self.row = self.active_rows;
+        if self.row >= self.rows.len() as u16 {
+            self.row = self.rows.len() as u16 - 1;
         }
 
         if self.row > self.config.height() + self.vert_offset {
@@ -120,19 +126,19 @@ impl State {
         write!(
             self.stdout,
             "{}",
-            termion::cursor::Goto(self.col - self.hor_offset,
-                                  self.row - self.vert_offset)
+            termion::cursor::Goto(self.col - self.hor_offset, self.row - self.vert_offset)
         )
         .unwrap();
         self.stdout.flush().unwrap();
     }
 
     pub fn re_draw(&mut self) {
-        for row in 1..=self.config.height() { // iterating through visible rows
-            if row > self.active_rows {
-                break;
-            }
-
+        let num_rows = std::cmp::min(
+                         self.config.height(),
+                         self.rows.len() as u16 - 1
+                       );
+        for row in 1..=num_rows {
+            // iterating through visible rows
             write!(
                 self.stdout,
                 "{}{}{}{}{}",
@@ -141,21 +147,18 @@ impl State {
                 termion::color::Fg(termion::color::Yellow),
                 row + self.vert_offset,
                 termion::color::Fg(termion::color::Reset)
-            )
-            .unwrap();
-            
+            ).unwrap();
+
             let active_row = &self.rows[(row + self.vert_offset) as usize];
             if active_row.chars.len() > self.hor_offset as usize {
                 let left_border = self.hor_offset as usize;
-                let right_border =
-                    std::cmp::min(
-                      left_border + (self.config.width() - self.config.min_col()) as usize,
-                      active_row.chars.len()
-                    );
+                let right_border = std::cmp::min(
+                    left_border + (self.config.width() - self.config.min_col()) as usize,
+                    active_row.chars.len(),
+                );
 
                 let line_print: String =
-                    active_row.chars[left_border..right_border].iter()
-                                                               .collect();
+                    active_row.chars[left_border..right_border].iter().collect();
                 write!(
                     self.stdout,
                     "{}{}",
@@ -164,6 +167,14 @@ impl State {
                 )
                 .unwrap();
             }
+        }
+        for row in self.rows.len() as u16..=self.config.height() {
+            write!(
+                self.stdout,
+                "{}{}",
+                termion::cursor::Goto(2, row),
+                termion::clear::UntilNewline
+            ).unwrap();
         }
         self.stdout.flush().unwrap();
     }

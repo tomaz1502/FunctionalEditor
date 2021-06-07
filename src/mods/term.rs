@@ -40,32 +40,39 @@ pub fn start_term(state: &mut State) {
     )
     .unwrap();
 
-    for row in 2..=state.config.height() as u16 {
-        write!(state.stdout, "{}~", termion::cursor::Goto(1, row)).unwrap();
+    for row in 1..=state.config.height() as u16 {
+        write!( // cant use go_to here because the lines weren't initialized yet
+            state.stdout,
+            "{}~",
+            termion::cursor::Goto(1, row)
+        ).unwrap();
     }
-    state.add_row(None);
-    state.go_to(state.row(), state.col());
-
     if let Some(input_text) = &state.config.text {
         let input_text_clone = input_text.clone();
         draw_file(state, input_text_clone);
+    } else {
+        state.add_row(None);
     }
+    state.go_to(state.config.min_row(), state.config.min_col());
     state.stdout.flush().unwrap();
 }
 
-/* Given the text from a external file (input_text), write it's contexts on the screen
- * and add the necessary rows in state, with its contents. This function was only tested
- * when called by start_term */
 fn draw_file(state: &mut State, input_text: String) {
-    for line in input_text.lines() {
+    write!(
+        state.stdout,
+        "{}",
+        termion::cursor::Goto(state.config.min_col(), state.config.min_row())
+    ).unwrap();
+
+    for (index, line) in input_text.lines().enumerate() {
         let right_border = std::cmp::min(
             (state.config.width() - state.config.min_col() + 1) as usize,
             line.len(),
         );
         let visible_line = &line[..right_border];
-        write!(state.stdout, "{}", visible_line).unwrap();
         state.add_row(Some(line.chars().collect()));
-        state.move_cursor(1, 0);
+        state.go_to(index as u16 + 1, state.config.min_col());
+        write!(state.stdout, "{}", visible_line).unwrap();
     }
 }
 
@@ -103,20 +110,30 @@ fn interpret_backspace(state: &mut State) {
     if state.col() > state.config.min_col() {
         let index_to_remove = (state.col() - state.config.min_col() - 1) as usize;
         state.current_row().chars.remove(index_to_remove);
+
+        let curr_col_num = state.col();
+        state.go_to(state.row(), state.config.min_col());
+
+        let curr_row = state.current_row().clone();
+        write!(
+                state.stdout,
+                "{}{}",
+                termion::clear::UntilNewline,
+                curr_row
+              ).unwrap();
+
+        state.go_to(state.row(), curr_col_num - 1);
     }
-
-    let curr_col_num = state.col();
-    state.go_to(state.row(), state.config.min_col());
-
-    let curr_row = state.current_row().clone();
-    write!(
-            state.stdout,
-            "{}{}",
-            termion::clear::UntilNewline,
-            curr_row
-          ).unwrap();
-
-    state.go_to(state.row(), curr_col_num - 1);
+    else if state.row() > state.config.min_row() {
+        let chars_to_move = state.current_row().chars.clone();
+        let curr_row = state.row();
+        state.remove_row(state.row() as usize);
+        state.move_cursor(-1, 0);
+        let prev_row_len = state.row_length(state.row());
+        state.current_row().chars.extend(chars_to_move.iter());
+        state.re_draw();
+        state.go_to(curr_row - 1, prev_row_len as u16);
+    }
 }
 
 pub fn interpret_key(key: Key, state: &mut State) {
@@ -129,7 +146,7 @@ pub fn interpret_key(key: Key, state: &mut State) {
         Key::Up => state.move_cursor(-1, 0),
         Key::Down => state.move_cursor(1, 0),
         Key::PageUp => state.go_to(state.config.min_row(), state.col()),
-        Key::PageDown => state.go_to(state.active_rows, state.col()),
+        Key::PageDown => state.go_to(state.rows.len() as u16, state.col()),
         Key::Alt('q') => die(state),
         _ => (),
     }

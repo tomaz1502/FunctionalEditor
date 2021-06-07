@@ -14,10 +14,7 @@ impl Clone for Row {
 
 impl fmt::Display for Row {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut to_print = String::new();
-        for &c in &self.chars {
-            to_print.push(c);
-        }
+        let to_print: String = self.chars.iter().collect();
         write!(f, "{}", to_print)
     }
 }
@@ -28,8 +25,5 @@ impl Row {
     }
     pub fn from_vec(source: Vec<char>) -> Row {
         Row { chars: source }
-    }
-    pub fn push(&mut self, c: char) {
-        self.chars.push(c);
     }
 }

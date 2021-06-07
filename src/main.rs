@@ -15,7 +15,7 @@ fn main() -> Result<(), &'static str> {
     let (width, height) = termion::terminal_size().unwrap();
 
     let config = Config::new(&args, height, width)?;
-    let mut state = State::new(0, config.min_col(), config);
+    let mut state = State::new(1, config.min_col(), config);
 
     term::start_term(&mut state);
     // termion::async_stdin();
