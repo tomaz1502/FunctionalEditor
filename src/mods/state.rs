@@ -133,6 +133,8 @@ impl State {
     }
 
     pub fn re_draw(&mut self) {
+        let curr_row = self.row();
+        let curr_col = self.col();
         let num_rows = std::cmp::min(
                          self.config.height(),
                          self.rows.len() as u16 - 1
@@ -176,6 +178,11 @@ impl State {
                 termion::clear::UntilNewline
             ).unwrap();
         }
+        write!(
+            self.stdout,
+            "{}",
+            termion::cursor::Goto(curr_col, curr_row)
+        ).unwrap();
         self.stdout.flush().unwrap();
     }
 }

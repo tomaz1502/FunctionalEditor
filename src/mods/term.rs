@@ -49,7 +49,7 @@ pub fn start_term(state: &mut State) {
     }
     if let Some(input_text) = &state.config.text {
         let input_text_clone = input_text.clone();
-        draw_file(state, input_text_clone);
+        handle_file(state, input_text_clone);
     } else {
         state.add_row(None);
     }
@@ -57,23 +57,16 @@ pub fn start_term(state: &mut State) {
     state.stdout.flush().unwrap();
 }
 
-fn draw_file(state: &mut State, input_text: String) {
-    write!(
-        state.stdout,
-        "{}",
-        termion::cursor::Goto(state.config.min_col(), state.config.min_row())
-    ).unwrap();
-
-    for (index, line) in input_text.lines().enumerate() {
-        let right_border = std::cmp::min(
-            (state.config.width() - state.config.min_col() + 1) as usize,
-            line.len(),
-        );
-        let visible_line = &line[..right_border];
-        state.add_row(Some(line.chars().collect()));
-        state.go_to(index as u16 + 1, state.config.min_col());
-        write!(state.stdout, "{}", visible_line).unwrap();
+fn handle_file(state: &mut State, input_text: String) {
+    // later we will have to add file information here (name, extension, etc..)
+    if input_text.is_empty() {
+        state.add_row(None);
+    } else {
+        for line in input_text.lines() {
+            state.add_row(Some(line.chars().collect()));
+        }
     }
+    state.re_draw();
 }
 
 fn interpret_char(c: char, state: &mut State) {
