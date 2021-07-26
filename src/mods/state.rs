@@ -73,6 +73,7 @@ impl State {
         }
     }
 
+    // Insert row after the last one
     pub fn add_row(&mut self, to_add: Option<Vec<char>>) {
         self.insert_row(self.rows.len(), to_add);
     }
@@ -185,4 +186,14 @@ impl State {
         ).unwrap();
         self.stdout.flush().unwrap();
     }
+
+    pub fn get_all_text(&self) -> String {
+        let u: Vec<String> =
+            self.rows.clone()
+            .into_iter()
+            .map(|row| row.chars.into_iter().collect())
+            .collect();
+        u.join("\n")
+    }
 }
+

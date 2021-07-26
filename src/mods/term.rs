@@ -1,6 +1,8 @@
+use std::fs::File;
 use std::io::Stdin;
 use std::io::Write;
 use std::process;
+use std::io::Read;
 
 use termion::event::Key;
 use termion::input::TermRead;
@@ -10,7 +12,8 @@ use super::state::State;
 /* Turn the terminal back from Raw mode and ends the program */
 pub fn die(state: &mut State) {
     let goodbye_message: &str = "Good Bye!";
-    let first_line_col: usize = (state.config.width() as usize - goodbye_message.len()) / 2;
+    let first_line_col: usize =
+          (state.config.width() as usize - goodbye_message.len()) / 2;
 
     write!(
         state.stdout,
@@ -19,8 +22,7 @@ pub fn die(state: &mut State) {
         termion::clear::All,
         termion::cursor::Goto(first_line_col as u16, 1),
         goodbye_message
-    )
-    .unwrap();
+    ).unwrap();
 
     write!(state.stdout, "{}", termion::cursor::Goto(1, 2)).unwrap();
     state.stdout.flush().unwrap();
@@ -37,8 +39,7 @@ pub fn start_term(state: &mut State) {
         "{}{}",
         termion::clear::All,
         termion::cursor::Show,
-    )
-    .unwrap();
+    ).unwrap();
 
     for row in 1..=state.config.height() as u16 {
         write!( // cant use go_to here because the lines weren't initialized yet
@@ -47,14 +48,27 @@ pub fn start_term(state: &mut State) {
             termion::cursor::Goto(1, row)
         ).unwrap();
     }
-    if let Some(input_text) = &state.config.text {
-        let input_text_clone = input_text.clone();
-        handle_file(state, input_text_clone);
+    if let Some(file) = &mut state.config.file {
+        let mut file_text = String::new();
+        file.read_to_string(&mut file_text).unwrap();
+        handle_file(state, file_text);
     } else {
         state.add_row(None);
     }
     state.go_to(state.config.min_row(), state.config.min_col());
     state.stdout.flush().unwrap();
+}
+
+fn save_file(state: &mut State) {
+    let editor_text = state.get_all_text();
+    if let Some(file) = &mut state.config.file {
+        file.write_all(editor_text.as_bytes()).unwrap();
+    } else {
+        let file_name = "tomaz";
+        let mut file = File::create(file_name).unwrap();
+        file.write_all(editor_text.as_bytes()).unwrap();
+        state.config.file = Some(file);
+    }
 }
 
 fn handle_file(state: &mut State, input_text: String) {
@@ -116,8 +130,7 @@ fn interpret_backspace(state: &mut State) {
               ).unwrap();
 
         state.go_to(state.row(), curr_col_num - 1);
-    }
-    else if state.row() > state.config.min_row() {
+    } else if state.row() > state.config.min_row() {
         let chars_to_move = state.current_row().chars.clone();
         let curr_row = state.row();
         state.remove_row(state.row() as usize);
@@ -140,6 +153,7 @@ pub fn interpret_key(key: Key, state: &mut State) {
         Key::Down => state.move_cursor(1, 0),
         Key::PageUp => state.go_to(state.config.min_row(), state.col()),
         Key::PageDown => state.go_to(state.rows.len() as u16, state.col()),
+        Key::Alt('s') => save_file(state),
         Key::Alt('q') => die(state),
         _ => (),
     }

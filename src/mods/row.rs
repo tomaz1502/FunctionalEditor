@@ -1,16 +1,17 @@
 use std::fmt;
 
+#[derive(Clone)]
 pub struct Row {
     pub chars: Vec<char>,
 }
 
-impl Clone for Row {
-    fn clone(&self) -> Row {
-        Row {
-            chars: self.chars.clone(),
-        }
-    }
-}
+// impl Clone for Row {
+//     fn clone(&self) -> Row {
+//         Row {
+//             chars: self.chars.clone(),
+//         }
+//     }
+// }
 
 impl fmt::Display for Row {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

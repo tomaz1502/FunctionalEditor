@@ -1,8 +1,10 @@
-use std::fs;
+use std::fs::File;
+use std::env;
+use std::path::PathBuf;
 
 pub struct Config {
-    pub file: Option<String>,
-    pub text: Option<String>,
+    pub file: Option<File>,
+    pub cwd: PathBuf,
     width: u16,
     height: u16,
     min_col: u16,
@@ -11,34 +13,28 @@ pub struct Config {
 
 impl Config {
     pub fn new(args: &Vec<String>, height: u16, width: u16) -> Result<Config, &'static str> {
-        if args.len() > 3 {
-            return Err("Too many arguments! Usage: cargo run file_name");
+        if args.len() >= 3 {
+            return Err("Too many arguments! Usage: cargo run <file_name>");
         }
 
-        if args.len() == 2 {
-            let file_name = args[1].clone();
-            let file_text = fs::read_to_string(&file_name);
-            match file_text {
-                Ok(ft) => Ok(Config {
-                    file: Some(file_name),
-                    text: Some(ft),
-                    width,
-                    height,
-                    min_col: 4,
-                    min_row: 1,
-                }),
-                Err(_) => Err("File not found!"),
-            }
-        } else {
-            Ok(Config {
-                file: None,
-                text: None,
-                height,
-                width,
-                min_col: 4,
-                min_row: 1,
-            })
-        }
+        let cwd = env::current_dir().unwrap();
+        let file = match args.len() {
+            2 => { let file_name = args[1].clone();
+                   match File::open(&file_name) {
+                     Ok(file) => Some(file),
+                     Err(_)   => Some(File::create(&file_name).unwrap()),
+                   }
+                 },
+            _ => None,
+        };
+        Ok(Config {
+            file,
+            cwd,
+            width,
+            height,
+            min_col: 4,
+            min_row: 1,
+        })
     }
 
     pub fn height(&self) -> u16 {
