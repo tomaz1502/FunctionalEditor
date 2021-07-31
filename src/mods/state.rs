@@ -55,11 +55,8 @@ impl State {
         self.rows.remove(index);
     }
 
-    pub fn insert_row(&mut self, index: usize, to_add: Option<Vec<char>>) {
-        match to_add {
-            Some(row) => self.rows.insert(index, Row::from_vec(row)),
-            None => self.rows.insert(index, Row::new()),
-        }
+    pub fn insert_row(&mut self, index: usize, row: Vec<char>) {
+        self.rows.insert(index, Row::from_vec(row));
 
         if self.rows.len() as u16 <= self.config.height() + self.vert_offset {
             write!(
@@ -74,7 +71,7 @@ impl State {
     }
 
     // Insert row after the last one
-    pub fn add_row(&mut self, to_add: Option<Vec<char>>) {
+    pub fn add_row(&mut self, to_add: Vec<char>) {
         self.insert_row(self.rows.len(), to_add);
     }
 
@@ -112,6 +109,17 @@ impl State {
             self.hor_offset = self.col - self.config.min_col(); // ?
             self.re_draw();
         }
+    }
+
+    // here we dont assign to self.row/col, this way we can continue writing
+    // from the same place as before
+    pub fn go_to_bottom(&mut self) {
+        write!(
+            self.stdout,
+            "{}",
+            termion::cursor::Goto(1, self.config.height() + 2)
+        ).unwrap();
+        self.stdout.flush().unwrap(); 
     }
 
     pub fn move_cursor(&mut self, row_delta: i16, col_delta: i16) {
@@ -188,12 +196,12 @@ impl State {
     }
 
     pub fn get_all_text(&self) -> String {
-        let u: Vec<String> =
-            self.rows.clone()
-            .into_iter()
-            .map(|row| row.chars.into_iter().collect())
-            .collect();
-        u.join("\n")
+        self.rows.clone()[1..].to_vec()
+        .into_iter()
+        .map(|row| row.chars.into_iter().collect())
+        .collect::<Vec<String>>()
+        .join("\n")
+        + "\n"
     }
 }
 

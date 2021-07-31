@@ -1,14 +1,9 @@
-use std::fs::File;
-use std::env;
-use std::path::PathBuf;
-
 pub struct Config {
-    pub file: Option<File>,
-    pub cwd: PathBuf,
-    width: u16,
-    height: u16,
-    min_col: u16,
-    min_row: u16,
+    pub file_name : Option<String>,
+    width         : u16,
+    height        : u16,
+    min_col       : u16,
+    min_row       : u16,
 }
 
 impl Config {
@@ -17,21 +12,14 @@ impl Config {
             return Err("Too many arguments! Usage: cargo run <file_name>");
         }
 
-        let cwd = env::current_dir().unwrap();
-        let file = match args.len() {
-            2 => { let file_name = args[1].clone();
-                   match File::open(&file_name) {
-                     Ok(file) => Some(file),
-                     Err(_)   => Some(File::create(&file_name).unwrap()),
-                   }
-                 },
-            _ => None,
+        let file_name = match args.len() {
+            2 => Some(args[1].clone()),
+            _ => None
         };
         Ok(Config {
-            file,
-            cwd,
+            file_name,
             width,
-            height,
+            height: height - 2,
             min_col: 4,
             min_row: 1,
         })

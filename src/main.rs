@@ -1,5 +1,5 @@
 use std::env;
-use std::io::stdin;
+use std::io;
 
 mod mods;
 
@@ -8,7 +8,7 @@ use mods::state::State;
 use mods::term;
 
 fn main() -> Result<(), &'static str> {
-    let stdin = stdin();
+    let stdin = io::stdin();
 
     let args: Vec<String> = env::args().collect();
 

@@ -1,8 +1,10 @@
+use std::fs;
+use std::io;
 use std::fs::File;
 use std::io::Stdin;
 use std::io::Write;
+use std::path::Path;
 use std::process;
-use std::io::Read;
 
 use termion::event::Key;
 use termion::input::TermRead;
@@ -48,12 +50,11 @@ pub fn start_term(state: &mut State) {
             termion::cursor::Goto(1, row)
         ).unwrap();
     }
-    if let Some(file) = &mut state.config.file {
-        let mut file_text = String::new();
-        file.read_to_string(&mut file_text).unwrap();
+    if let Some(file_name) = &mut state.config.file_name {
+        let file_text = fs::read_to_string(file_name).unwrap();
         handle_file(state, file_text);
     } else {
-        state.add_row(None);
+        state.add_row(Vec::new());
     }
     state.go_to(state.config.min_row(), state.config.min_col());
     state.stdout.flush().unwrap();
@@ -61,23 +62,23 @@ pub fn start_term(state: &mut State) {
 
 fn save_file(state: &mut State) {
     let editor_text = state.get_all_text();
-    if let Some(file) = &mut state.config.file {
-        file.write_all(editor_text.as_bytes()).unwrap();
+    if let Some(file_name) = &state.config.file_name {
+        let mut file = File::create(Path::new(file_name)).unwrap();
+        file.write(editor_text.as_bytes()).unwrap();
     } else {
-        let file_name = "tomaz";
-        let mut file = File::create(file_name).unwrap();
-        file.write_all(editor_text.as_bytes()).unwrap();
-        state.config.file = Some(file);
+        let file_name = prompt("Enter the file name: ", state);
+        let mut file = File::create(Path::new(&file_name)).unwrap();
+        file.write(editor_text.as_bytes()).unwrap();
+        state.config.file_name = Some(file_name);
     }
 }
 
 fn handle_file(state: &mut State, input_text: String) {
-    // later we will have to add file information here (name, extension, etc..)
     if input_text.is_empty() {
-        state.add_row(None);
+        state.add_row(Vec::new());
     } else {
         for line in input_text.lines() {
-            state.add_row(Some(line.chars().collect()));
+            state.add_row(line.chars().collect());
         }
     }
     state.re_draw();
@@ -108,7 +109,7 @@ fn interpret_enter(state: &mut State) {
         state.current_row().chars[current_position..line_length].to_vec();
     let curr_row_num = state.row();
     state.current_row().chars.drain(current_position .. line_length);
-    state.insert_row((state.row() + 1) as usize, Some(chars_to_move));
+    state.insert_row((state.row() + 1) as usize, chars_to_move);
     state.re_draw();
     state.go_to(curr_row_num + 1, 0);
 }
@@ -145,17 +146,17 @@ fn interpret_backspace(state: &mut State) {
 pub fn interpret_key(key: Key, state: &mut State) {
     match key {
         Key::Char('\x0A') => interpret_enter(state),
-        Key::Char(c) => interpret_char(c, state),
-        Key::Backspace => interpret_backspace(state),
-        Key::Left => state.move_cursor(0, -1),
-        Key::Right => state.move_cursor(0, 1),
-        Key::Up => state.move_cursor(-1, 0),
-        Key::Down => state.move_cursor(1, 0),
-        Key::PageUp => state.go_to(state.config.min_row(), state.col()),
-        Key::PageDown => state.go_to(state.rows.len() as u16, state.col()),
-        Key::Alt('s') => save_file(state),
-        Key::Alt('q') => die(state),
-        _ => (),
+        Key::Char(c)      => interpret_char(c, state),
+        Key::Backspace    => interpret_backspace(state),
+        Key::Left         => state.move_cursor(0, -1),
+        Key::Right        => state.move_cursor(0, 1),
+        Key::Up           => state.move_cursor(-1, 0),
+        Key::Down         => state.move_cursor(1, 0),
+        Key::PageUp       => state.go_to(state.config.min_row(), state.col()),
+        Key::PageDown     => state.go_to(state.rows.len() as u16, state.col()),
+        Key::Alt('s')     => save_file(state),
+        Key::Alt('q')     => die(state),
+        _                 => (),
     }
 }
 
@@ -163,4 +164,30 @@ pub fn run(stdin: Stdin, mut state: &mut State) {
     for key in stdin.keys() {
         interpret_key(key.unwrap(), &mut state);
     }
+}
+
+pub fn prompt(msg: &str, state: &mut State) -> String {
+    state.go_to_bottom();
+    write!(state.stdout, "{}", msg).unwrap();
+    state.stdout.flush().unwrap(); 
+    let stdin = io::stdin();
+    let mut buffer = String::new();
+    for key in stdin.keys() {
+        match key.unwrap() {
+            Key::Char('\x0A') => { state.go_to_bottom();
+                                   write!(state.stdout, "{}", termion::clear::UntilNewline).unwrap();
+                                   state.stdout.flush().unwrap();
+                                   break; }
+            Key::Char(c) => { buffer.push(c); }
+            Key::Left    => (),
+            Key::Right    => (),
+            Key::Backspace => { buffer.pop(); }
+            _ => ()
+        }
+        state.go_to_bottom();
+        write!(state.stdout, "{}", termion::clear::UntilNewline).unwrap();
+        write!(state.stdout, "{}{}", msg, buffer).unwrap();
+        state.stdout.flush().unwrap();
+    }
+    buffer
 }
