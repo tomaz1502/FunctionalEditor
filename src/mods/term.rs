@@ -61,16 +61,15 @@ pub fn start_term(state: &mut State) {
 }
 
 fn save_file(state: &mut State) {
+    let file_name = match &state.config.file_name {
+        Some(file_name) => file_name.clone(),
+        None            => prompt("Enter the file name: ", state)
+    };
     let editor_text = state.get_all_text();
-    if let Some(file_name) = &state.config.file_name {
-        let mut file = File::create(Path::new(file_name)).unwrap();
-        file.write(editor_text.as_bytes()).unwrap();
-    } else {
-        let file_name = prompt("Enter the file name: ", state);
-        let mut file = File::create(Path::new(&file_name)).unwrap();
-        file.write(editor_text.as_bytes()).unwrap();
-        state.config.file_name = Some(file_name);
-    }
+    let mut file = File::create(Path::new(&file_name)).unwrap();
+
+    file.write(editor_text.as_bytes()).unwrap();
+    set_message(&format!("File {} written.", file_name)[..], state);
 }
 
 fn handle_file(state: &mut State, input_text: String) {
@@ -166,28 +165,33 @@ pub fn run(stdin: Stdin, mut state: &mut State) {
     }
 }
 
-pub fn prompt(msg: &str, state: &mut State) -> String {
+pub fn set_message(msg: &str, state: &mut State) {
+    let (row, col) = (state.row(), state.col());
     state.go_to_bottom();
-    write!(state.stdout, "{}", msg).unwrap();
-    state.stdout.flush().unwrap(); 
+    write!(state.stdout,
+           "{}{}",
+           termion::clear::UntilNewline,
+           msg,
+           ).unwrap();
+    state.stdout.flush().unwrap();
+    state.go_to(row, col);
+}
+
+pub fn prompt(msg: &str, state: &mut State) -> String {
     let stdin = io::stdin();
     let mut buffer = String::new();
+    let mut pointer: usize = 0;
+    set_message(msg, state);
     for key in stdin.keys() {
         match key.unwrap() {
-            Key::Char('\x0A') => { state.go_to_bottom();
-                                   write!(state.stdout, "{}", termion::clear::UntilNewline).unwrap();
-                                   state.stdout.flush().unwrap();
-                                   break; }
-            Key::Char(c) => { buffer.push(c); }
-            Key::Left    => (),
-            Key::Right    => (),
-            Key::Backspace => { buffer.pop(); }
+            Key::Char('\x0A') => { set_message("", state); break; }
+            Key::Char(c)      => { buffer.insert(pointer, c); pointer += 1; }
+            Key::Left         => { if pointer > 0            { pointer -= 1; } },
+            Key::Right        => { if pointer < buffer.len() { pointer += 1; } },
+            Key::Backspace    => { buffer.remove(pointer); pointer -= 1; }
             _ => ()
         }
-        state.go_to_bottom();
-        write!(state.stdout, "{}", termion::clear::UntilNewline).unwrap();
-        write!(state.stdout, "{}{}", msg, buffer).unwrap();
-        state.stdout.flush().unwrap();
+        set_message(&format!("{}{}", msg, buffer)[..], state);
     }
     buffer
 }
