@@ -17,6 +17,6 @@ fn main() -> Result<(), &'static str> {
 
     // termion::async_stdin();
 
-    // interface::run(&mut state);
+    interface::run(&mut state);
     Ok(())
 }
