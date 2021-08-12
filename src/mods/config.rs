@@ -16,6 +16,7 @@ impl Config {
             2 => Some(args[1].clone()),
             _ => None
         };
+
         Ok(Config {
             file_name,
             width,

@@ -1,25 +1,22 @@
 use std::env;
-use std::io;
 
 mod mods;
 
 use mods::config::Config;
 use mods::state::State;
-use mods::term;
+use mods::interface;
 
 fn main() -> Result<(), &'static str> {
-    let stdin = io::stdin();
-
     let args: Vec<String> = env::args().collect();
 
     let (width, height) = termion::terminal_size().unwrap();
 
     let config = Config::new(&args, height, width)?;
-    let mut state = State::new(1, config.min_col(), config);
 
-    term::start_term(&mut state);
+    let mut state = State::create(1, config.min_col(), config);
+
     // termion::async_stdin();
 
-    term::run(stdin, &mut state);
+    // interface::run(&mut state);
     Ok(())
 }

@@ -1,207 +1,132 @@
-use std::io::{stdout, Write};
-use termion::color;
+use std::path::Path;
+use std::fs::File;
+use std::io::{stdout};
+use std::fs;
+use std::io::Write;
+
 use termion::raw::IntoRawMode;
 
-use super::config;
-use super::row::Row;
+use super::config::Config;
+use super::data::Data;
+use super::term::Term;
+use super::interface::run_prompt;
 
 pub struct State {
-    row: u16,
-    col: u16,
-    pub vert_offset: u16,
-    pub hor_offset: u16,
-    pub rows: Vec<Row>,
-    pub stdout: termion::raw::RawTerminal<std::io::Stdout>,
-    pub config: config::Config,
+    pub term: Term,
+    pub data: Data,
+    pub config: Config,
 }
 
 impl State {
-    pub fn new(row: u16, col: u16, config: config::Config) -> State {
+    fn new(row: u16, col: u16, config: Config) -> State {
+        let stdout = stdout().into_raw_mode().unwrap();
         State {
-            row,
-            col,
+            term: Term::new(row, col, 0, 0, stdout),
+            data: Data::from_vec(vec![String::new(); 1]),
             config,
-            vert_offset: 0,
-            hor_offset: 0,
-            stdout: stdout().into_raw_mode().unwrap(),
-            rows: vec![Row::new(); 1], // rows are 1-based
         }
     }
 
-    pub fn row(&self) -> u16 {
-        self.row
+    pub fn create(row: u16, col: u16, config: Config) -> State {
+        let mut state = State::new(row, col, config);
+        state.term.start(&state.config);
+        state.handle_file();
+        state
     }
 
-    pub fn col(&self) -> u16 {
-        self.col
-    }
+    fn handle_file(&mut self) {
+        if let Some(file_name) = &mut self.config.file_name {
 
-    pub fn row_length(&self, row: u16) -> u16 {
-        self.rows[row as usize].chars.len() as u16 + self.config.min_col()
-    }
-
-    pub fn current_row(&mut self) -> &mut Row {
-        &mut self.rows[self.row as usize]
-    }
-
-    pub fn remove_row(&mut self, index: usize) {
-        if self.rows.len() as u16 <= self.config.height() + self.vert_offset {
-            write!(
-                self.stdout,
-                "{}~",
-                termion::cursor::Goto(1, self.rows.len() as u16 - 1),
-            ).unwrap();
+            let input_text = fs::read_to_string(file_name).unwrap();
+            if input_text.is_empty() {
+                self.add_row(String::new());
+            } else {
+                for line in input_text.lines() {
+                    self.add_row(line.chars().collect());
+                }
+            }
+            self.term.draw_screen(&self.data, &self.config);
+        } else {
+            self.add_row(String::new());
         }
-        self.rows.remove(index);
+        self.go_to(self.config.min_row(), self.config.min_col());
+    }
+    
+    pub fn save_file(&mut self) {
+        let file_name = match &self.config.file_name {
+            Some(file_name) => file_name.clone(),
+            None            => run_prompt("Enter the file name: ", self)
+        };
+        let editor_text = self.data.to_string();
+        let mut file = File::create(Path::new(&file_name)).unwrap();
+
+        file.write(editor_text.as_bytes()).unwrap();
+        self.set_message(&format!("File {} written.", file_name)[..]);
     }
 
-    pub fn insert_row(&mut self, index: usize, row: Vec<char>) {
-        self.rows.insert(index, Row::from_vec(row));
+    fn current_row(&mut self) -> &mut String {
+        self.data.get_row(self.term.row)
+    }
 
-        if self.rows.len() as u16 <= self.config.height() + self.vert_offset {
-            write!(
-                self.stdout,
-                "{}{}{}{}",
-                color::Fg(color::Yellow),
-                termion::cursor::Goto(1, self.rows.len() as u16 - 1),
-                self.rows.len() - 1,
-                color::Fg(color::Reset)
-            ).unwrap();
+    fn insert_row(&mut self, index: u16, row: String) {
+        self.data.insert(index, row.clone());
+        self.term.insert_row(&self.data, &self.config);
+    }
+
+    fn insert_char(&mut self, row: u16, col: u16, c: char) {
+        self.data.insert_char(row, col, c);
+        self.term.draw_row(row, &self.data, &self.config);
+    }
+
+    pub fn place_char(&mut self, c: char) {
+        self.insert_char(self.term.row, self.term.col, c);
+        self.move_cursor(0, 1);
+    }
+
+    pub fn break_line(&mut self) {
+        let col = self.term.col as usize; // avoid two uses of self in the same instruction
+        let chars: String =
+            self.current_row()[col ..].to_string();
+        self.data.truncate_row(self.term.row, self.term.col);
+        self.insert_row(self.term.row + 1, chars);
+        self.term.draw_screen(&self.data, &self.config);
+        self.go_to(self.term.row + 1, 0);
+    }
+
+    pub fn run_backspace(&mut self) {
+        if self.term.col > self.config.min_col() {
+            let rem_index = self.term.col - self.config.min_col() - 1;
+            self.data.remove_char(self.term.row, rem_index);
+            self.term.draw_row(self.term.row, &self.data, &self.config);
+            self.go_to(self.term.row, self.term.col - 1);
+        } else if self.term.row > self.config.min_row() {
+            let prev_len = self.data.get_row(self.term.row - 1).len();
+            let curr_text = self.current_row().clone();
+            self.data.extend_row(self.term.row - 1, curr_text);
+            self.data.remove(self.term.row);
+            self.term.draw_screen(&self.data, &self.config);
+            self.go_to(self.term.row - 1, prev_len as u16);
         }
     }
 
     // Insert row after the last one
-    pub fn add_row(&mut self, to_add: Vec<char>) {
-        self.insert_row(self.rows.len(), to_add);
-    }
-
-    /* Make sure that self.row and self.col is on a valid position of the file.
-     * In case it get off the screen we increase the offset and re_draw (scroll). */
-    fn fix_cursor_bounds(&mut self) {
-        if self.row < self.config.min_row() {
-            self.row = self.config.min_row();
-        }
-
-        if self.row >= self.rows.len() as u16 {
-            self.row = self.rows.len() as u16 - 1;
-        }
-
-        if self.row > self.config.height() + self.vert_offset {
-            self.vert_offset = self.row - self.config.height();
-            self.re_draw();
-        } else if self.row - self.config.min_row() < self.vert_offset {
-            self.vert_offset = self.row - self.config.min_row();
-            self.re_draw();
-        }
-
-        if self.col < self.config.min_col() {
-            self.col = self.config.min_col();
-        }
-
-        if self.col > self.row_length(self.row) {
-            self.col = self.row_length(self.row);
-        }
-
-        if self.col > self.config.width() + self.hor_offset {
-            self.hor_offset = self.col - self.config.width();
-            self.re_draw();
-        } else if self.col < self.hor_offset + self.config.min_col() {
-            self.hor_offset = self.col - self.config.min_col(); // ?
-            self.re_draw();
-        }
-    }
-
-    // here we dont assign to self.row/col, this way we can continue writing
-    // from the same place as before
-    pub fn go_to_bottom(&mut self) {
-        write!(
-            self.stdout,
-            "{}",
-            termion::cursor::Goto(1, self.config.height() + 2)
-        ).unwrap();
-        self.stdout.flush().unwrap(); 
+    fn add_row(&mut self, to_add: String) {
+        self.insert_row(self.data.len() as u16, to_add);
     }
 
     pub fn move_cursor(&mut self, row_delta: i16, col_delta: i16) {
-        let new_row = ((self.row as i16) + row_delta) as u16;
-        let new_col = ((self.col as i16) + col_delta) as u16;
-        self.go_to(new_row, new_col);
+        self.term.move_cursor(row_delta, col_delta, &self.data, &self.config);
     }
 
-    pub fn go_to(&mut self, row: u16, col: u16) {
-        self.row = row;
-        self.col = col;
-        self.fix_cursor_bounds();
-        write!(
-            self.stdout,
-            "{}",
-            termion::cursor::Goto(self.col - self.hor_offset, self.row - self.vert_offset)
-        )
-        .unwrap();
-        self.stdout.flush().unwrap();
+    fn go_to(&mut self, row: u16, col: u16) {
+        self.term.go_to(row, col, &self.data, &self.config);
+    }
+    
+    pub fn set_message(&mut self, msg: &str) {
+        self.term.set_message(msg, &self.data, &self.config);
     }
 
-    pub fn re_draw(&mut self) {
-        let curr_row = self.row();
-        let curr_col = self.col();
-        let num_rows = std::cmp::min(
-                         self.config.height(),
-                         self.rows.len() as u16 - 1
-                       );
-        for row in 1..=num_rows {
-            // iterating through visible rows
-            write!(
-                self.stdout,
-                "{}{}{}{}{}",
-                termion::cursor::Goto(1, row as u16),
-                termion::clear::UntilNewline,
-                termion::color::Fg(termion::color::Yellow),
-                row + self.vert_offset,
-                termion::color::Fg(termion::color::Reset)
-            ).unwrap();
-
-            let active_row = &self.rows[(row + self.vert_offset) as usize];
-            if active_row.chars.len() > self.hor_offset as usize {
-                let left_border = self.hor_offset as usize;
-                let right_border = std::cmp::min(
-                    left_border + (self.config.width() - self.config.min_col()) as usize,
-                    active_row.chars.len(),
-                );
-
-                let line_print: String =
-                    active_row.chars[left_border..right_border].iter().collect();
-                write!(
-                    self.stdout,
-                    "{}{}",
-                    termion::cursor::Goto(self.config.min_col() as u16, row as u16),
-                    line_print
-                )
-                .unwrap();
-            }
-        }
-        for row in self.rows.len() as u16..=self.config.height() {
-            write!(
-                self.stdout,
-                "{}{}",
-                termion::cursor::Goto(2, row),
-                termion::clear::UntilNewline
-            ).unwrap();
-        }
-        write!(
-            self.stdout,
-            "{}",
-            termion::cursor::Goto(curr_col, curr_row)
-        ).unwrap();
-        self.stdout.flush().unwrap();
-    }
-
-    pub fn get_all_text(&self) -> String {
-        self.rows.clone()[1..].to_vec()
-        .into_iter()
-        .map(|row| row.chars.into_iter().collect())
-        .collect::<Vec<String>>()
-        .join("\n")
-        + "\n"
+    pub fn die(&mut self) {
+        self.term.die(&self.config);
     }
 }
-
