@@ -13,7 +13,7 @@ fn main() -> Result<(), &'static str> {
 
     let config = Config::new(&args, height, width)?;
 
-    let mut state = State::create(1, config.min_col(), config);
+    let mut state = State::create(config);
 
     // termion::async_stdin();
 

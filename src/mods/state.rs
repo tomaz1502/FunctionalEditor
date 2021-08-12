@@ -18,25 +18,25 @@ pub struct State {
 }
 
 impl State {
-    fn new(row: u16, col: u16, config: Config) -> State {
+    fn new(config: Config) -> State {
         let stdout = stdout().into_raw_mode().unwrap();
         State {
-            term: Term::new(row, col, 0, 0, stdout),
-            data: Data::from_vec(vec![String::new(); 1]),
+            term: Term::new(0, 0, 0, 0, stdout),
+            data: Data::from_vec(Vec::new()),
             config,
         }
     }
 
-    pub fn create(row: u16, col: u16, config: Config) -> State {
-        let mut state = State::new(row, col, config);
+    pub fn create(config: Config) -> State {
+        let mut state = State::new(config);
         state.term.start(&state.config);
         state.handle_file();
+        state.go_to(0, 0);
         state
     }
 
     fn handle_file(&mut self) {
         if let Some(file_name) = &mut self.config.file_name {
-
             let input_text = fs::read_to_string(file_name).unwrap();
             if input_text.is_empty() {
                 self.add_row(String::new());
@@ -47,9 +47,9 @@ impl State {
             }
             self.term.draw_screen(&self.data, &self.config);
         } else {
+            // we need at least one row, otherwise it won't be possible to write
             self.add_row(String::new());
         }
-        self.go_to(self.config.min_row(), self.config.min_col());
     }
     
     pub fn save_file(&mut self) {
@@ -69,8 +69,8 @@ impl State {
     }
 
     fn insert_row(&mut self, index: u16, row: String) {
-        self.data.insert(index, row.clone());
-        self.term.insert_row(&self.data, &self.config);
+        self.data.insert(index, row);
+        self.term.add_row(&self.data, &self.config);
     }
 
     fn insert_char(&mut self, row: u16, col: u16, c: char) {
@@ -99,7 +99,7 @@ impl State {
             self.data.remove_char(self.term.row, rem_index);
             self.term.draw_row(self.term.row, &self.data, &self.config);
             self.go_to(self.term.row, self.term.col - 1);
-        } else if self.term.row > self.config.min_row() {
+        } else if self.term.row > 0 {
             let prev_len = self.data.get_row(self.term.row - 1).len();
             let curr_text = self.current_row().clone();
             self.data.extend_row(self.term.row - 1, curr_text);

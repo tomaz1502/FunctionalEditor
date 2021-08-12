@@ -5,8 +5,13 @@ use termion::input::TermRead;
 
 use super::state::State;
 
+pub fn run(mut state: &mut State) {
+    for key in io::stdin().keys() {
+        interpret_key(key.unwrap(), &mut state);
+    }
+}
 
-pub fn interpret_key(key: Key, state: &mut State) {
+fn interpret_key(key: Key, state: &mut State) {
     match key {
         Key::Char('\x0A') => state.break_line(),
         Key::Char(c)      => state.place_char(c),
@@ -15,17 +20,9 @@ pub fn interpret_key(key: Key, state: &mut State) {
         Key::Right        => state.move_cursor(0, 1),
         Key::Up           => state.move_cursor(-1, 0),
         Key::Down         => state.move_cursor(1, 0),
-        // Key::PageUp       => state.go_to(state.config.min_row(), state.col),
-        // Key::PageDown     => state.go_to(state.data.len() as u16, state.col),
         Key::Alt('s')     => state.save_file(),
         Key::Alt('q')     => state.die(),
         _                 => (),
-    }
-}
-
-pub fn run(mut state: &mut State) {
-    for key in io::stdin().keys() {
-        interpret_key(key.unwrap(), &mut state);
     }
 }
 

@@ -44,14 +44,18 @@ impl Term {
         }
     }
 
+    fn adjust_col(&self, col: u16, config: &Config) -> u16 {
+        col + config.min_col() - self.hor_offset
+    }
+
+    fn adjust_row(&self, row: u16, config: &Config) -> u16 {
+        row + config.min_row() - self.vert_offset
+    }
+
     /* Make sure that self.row and self.col is on a valid position of the file.
      * In case it get off the screen we increase the offset and re_draw (scroll). */
     fn fix_cursor_bounds(&mut self, data: &Data, config: &Config) {
-        let mut must_redraw = false;
-
-        if self.row < config.min_row() {
-            self.row = config.min_row();
-        }
+        let mut changed_offset = false;
 
         if self.row >= data.len() as u16 {
             self.row = data.len() as u16 - 1;
@@ -59,32 +63,27 @@ impl Term {
 
         if self.row > config.height() + self.vert_offset {
             self.vert_offset = self.row - config.height();
-            must_redraw = true;
-        } else if self.row - config.min_row() < self.vert_offset {
-            self.vert_offset = self.row - config.min_row();
-            must_redraw = true;
+            changed_offset = true;
+        } else if self.row < self.vert_offset {
+            self.vert_offset = self.row;
+            changed_offset = true;
         }
 
-        if self.col < config.min_col() {
-            self.col = config.min_col();
-        }
- 
-        // println!("{}", data.row_length(self.row));
         if self.col > data.row_length(self.row) as u16 {
             self.col = data.row_length(self.row) as u16;
         }
 
         if self.col > config.width() + self.hor_offset {
             self.hor_offset = self.col - config.width();
-            must_redraw = true;
-        } else if self.col < self.hor_offset + config.min_col() {
-            self.hor_offset = self.col - config.min_col(); // ?
-            must_redraw = true;
+            changed_offset = true;
+        } else if self.col < self.hor_offset {
+            self.hor_offset = self.col;
+            changed_offset = true;
         }
 
-        // if must_redraw {
-        //     self.draw_screen(data, config);
-        // }
+        if changed_offset {
+            self.draw_screen(data, config);
+        }
     }
 
     // pub fn pop_row(&mut self, index: u16, data: &Data, config: &Config) {
@@ -97,43 +96,45 @@ impl Term {
     //     }
     // }
 
-    pub fn insert_row(&mut self, data: &Data, config: &Config) {
+    pub fn add_row(&mut self, data: &Data, config: &Config) {
         if data.len() as u16 <= config.height() + self.vert_offset {
             write!(self.stdout,
                    "{}{}{}{}",
                    color::Fg(color::Yellow),
-                   termion::cursor::Goto(1, data.len() as u16 - 1),
-                   data.len() - 1,
+                   termion::cursor::Goto(1, data.len() as u16),
+                   data.len(),
                    color::Fg(color::Reset)
                   ).unwrap()
         }
     }
 
     pub fn draw_row(&mut self, row: u16, data: &Data, config: &Config) {
-        self.go_to(row, config.min_col(), data, config);
-        let curr_row = data.get_row_const(row);
+        let (curr_row, curr_col) = (self.row, self.col);
+        let curr_text = data.get_row_const(row);
+        self.go_to(row, 0, data, config);
         write!(self.stdout,
                "{}{}",
                termion::clear::UntilNewline,
-               curr_row
+               curr_text
               ).unwrap();
-        self.go_to(self.row, self.col, data, config);
+        self.go_to(curr_row, curr_col, data, config);
     }
     
     // here we dont assign to self.row/col, this way we can continue writing
     // from the same place as before
     pub fn go_to_bottom(&mut self, config: &Config) {
-        write!(
-            self.stdout,
-            "{}",
-            termion::cursor::Goto(1, config.height() + 2)
-        ).unwrap();
+        write!(self.stdout,
+               "{}",
+               termion::cursor::Goto(1, config.height() + 2)
+              ).unwrap();
         self.stdout.flush().unwrap(); 
     }
 
     pub fn move_cursor(&mut self, row_delta: i16, col_delta: i16, data: &Data, config: &Config) {
-        let new_row = ((self.row as i16) + row_delta) as u16;
-        let new_col = ((self.col as i16) + col_delta) as u16;
+        let real_col_delta = std::cmp::max(col_delta, -(self.col as i16));
+        let real_row_delta = std::cmp::max(row_delta, -(self.row as i16));
+        let new_row = ((self.row as i16) + real_row_delta) as u16;
+        let new_col = ((self.col as i16) + real_col_delta) as u16;
         self.go_to(new_row, new_col, data, config);
     }
 
@@ -141,62 +142,28 @@ impl Term {
         self.row = row;
         self.col = col;
         self.fix_cursor_bounds(data, config);
+        let term_col = self.adjust_col(self.col, config);
+        let term_row = self.adjust_row(self.row, config);
         write!(self.stdout,
                "{}",
-               termion::cursor::Goto(self.col - self.hor_offset, self.row - self.vert_offset)
+               termion::cursor::Goto(term_col, term_row)
               ).unwrap();
         self.stdout.flush().unwrap();
     }
 
     pub fn draw_screen(&mut self, data: &Data, config: &Config) {
-        let curr_row = self.row;
-        let curr_col = self.col;
-        let num_rows = std::cmp::min(config.height(), data.len() as u16 - 1);
-        for row in 1..=num_rows {
-            // iterating through visible rows
-            write!(
-                self.stdout,
-                "{}{}{}{}{}",
-                termion::cursor::Goto(1, row as u16),
-                termion::clear::UntilNewline,
-                termion::color::Fg(termion::color::Yellow),
-                row + self.vert_offset,
-                termion::color::Fg(termion::color::Reset)
-            ).unwrap();
-
-            let active_row = data.get_row_const(row + self.vert_offset);
-            if active_row.len() > self.hor_offset as usize {
-                let left_border = self.hor_offset as usize;
-                let right_border = std::cmp::min(
-                    left_border + (config.width() - config.min_col()) as usize,
-                    active_row.len(),
-                );
-
-                let line_print: String =
-                    active_row[left_border..right_border].to_string();
-                write!(
-                    self.stdout,
-                    "{}{}",
-                    termion::cursor::Goto(config.min_col() as u16, row as u16),
-                    line_print
-                )
-                .unwrap();
-            }
+        let (curr_row, curr_col) = (self.row, self.col);
+        for row in 0 .. data.len() {
+            self.draw_row(row as u16, data, config);
         }
-        for row in data.len() as u16..=config.height() {
-            write!(
-                self.stdout,
-                "{}{}",
-                termion::cursor::Goto(2, row),
-                termion::clear::UntilNewline
-            ).unwrap();
+        for row in data.len() ..= config.height() as usize {
+            write!(self.stdout,
+                   "{}{}~",
+                   termion::cursor::Goto(1, row as u16 + 1),
+                   termion::clear::UntilNewline
+                  ).unwrap();
         }
-        write!(
-            self.stdout,
-            "{}",
-            termion::cursor::Goto(curr_col, curr_row)
-        ).unwrap();
-        self.stdout.flush().unwrap();
+        self.go_to(curr_row, curr_col, data, config);
     }
 
     pub fn set_message(&mut self, msg: &str, data: &Data, config: &Config) {

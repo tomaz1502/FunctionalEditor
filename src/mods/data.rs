@@ -41,6 +41,6 @@ impl Data {
 
 impl ToString for Data {
     fn to_string(&self) -> String {
-        self.info.clone()[1..].join("\n") + "\n"
+        self.info.clone().join("\n") + "\n"
     }
 }
