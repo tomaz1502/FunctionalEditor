@@ -13,10 +13,10 @@ impl Data {
     pub fn row_length(&self, row: u16) -> usize {
         self.info[row as usize].len()
     }
-    pub fn get_row(&mut self, row: u16) -> &mut String {
+    pub fn get_row_mut(&mut self, row: u16) -> &mut String {
         &mut self.info[row as usize]
     }
-    pub fn get_row_const(&self, row: u16) -> &String {
+    pub fn get_row(&self, row: u16) -> &String {
         &self.info[row as usize]
     }
     pub fn remove(&mut self, row: u16) {

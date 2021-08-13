@@ -1,7 +1,7 @@
 use std::io::{Write};
 use std::process;
 
-use termion::color;
+use termion::*;
 
 use super::config::Config;
 use super::data::Data;
@@ -11,7 +11,7 @@ pub struct Term {
     pub col: u16,
     pub vert_offset: u16,
     pub hor_offset: u16,
-    pub stdout: termion::raw::RawTerminal<std::io::Stdout>,
+    pub stdout: raw::RawTerminal<std::io::Stdout>,
 }
 
 impl Term {
@@ -19,7 +19,7 @@ impl Term {
                col: u16,
                vert_offset: u16,
                hor_offset: u16,
-               stdout: termion::raw::RawTerminal<std::io::Stdout>) -> Term {
+               stdout: raw::RawTerminal<std::io::Stdout>) -> Term {
         Term {
             row,
             col,
@@ -32,14 +32,14 @@ impl Term {
     pub fn start(&mut self, config: &Config) {
         write!(self.stdout,
                "{}{}",
-               termion::clear::All,
-               termion::cursor::Show,
+               clear::All,
+               cursor::Show,
               ).unwrap();
 
         for row in 1..=config.height() as u16 {
             write!(self.stdout,
                    "{}~",
-                   termion::cursor::Goto(1, row)
+                   cursor::Goto(1, row)
                   ).unwrap();
         }
     }
@@ -60,9 +60,9 @@ impl Term {
         if self.row >= data.len() as u16 {
             self.row = data.len() as u16 - 1;
         }
-
-        if self.row > config.height() + self.vert_offset {
-            self.vert_offset = self.row - config.height();
+    
+        if self.row >= config.height() + self.vert_offset {
+            self.vert_offset = self.row - config.height() + 1;
             changed_offset = true;
         } else if self.row < self.vert_offset {
             self.vert_offset = self.row;
@@ -73,8 +73,8 @@ impl Term {
             self.col = data.row_length(self.row) as u16;
         }
 
-        if self.col > config.width() + self.hor_offset {
-            self.hor_offset = self.col - config.width();
+        if self.col + config.min_col() > config.width() + self.hor_offset {
+            self.hor_offset = self.col + config.min_col() - config.width();
             changed_offset = true;
         } else if self.col < self.hor_offset {
             self.hor_offset = self.col;
@@ -86,38 +86,41 @@ impl Term {
         }
     }
 
-    // pub fn pop_row(&mut self, index: u16, data: &Data, config: &Config) {
-    //     if data.len() as u16 <= config.height() + self.vert_offset {
-    //         write!(
-    //             self.stdout,
-    //             "{}~",
-    //             termion::cursor::Goto(1, data.len() as u16 - 1),
-    //         ).unwrap();
-    //     }
-    // }
-
     pub fn add_row(&mut self, data: &Data, config: &Config) {
         if data.len() as u16 <= config.height() + self.vert_offset {
             write!(self.stdout,
                    "{}{}{}{}",
                    color::Fg(color::Yellow),
-                   termion::cursor::Goto(1, data.len() as u16),
+                   cursor::Goto(1, data.len() as u16),
                    data.len(),
                    color::Fg(color::Reset)
                   ).unwrap()
         }
     }
 
+    // Assumes row < data.len()
     pub fn draw_row(&mut self, row: u16, data: &Data, config: &Config) {
-        let (curr_row, curr_col) = (self.row, self.col);
-        let curr_text = data.get_row_const(row);
-        self.go_to(row, 0, data, config);
+        let row_len = data.row_length(row);
+        let curr_text =
+            if row_len >= self.hor_offset as usize {
+                let right_border =
+                    std::cmp::min((self.hor_offset + config.width()) as usize,
+                                  row_len);
+                &data.get_row(row)[self.hor_offset as usize .. right_border]
+            } else {
+                ""
+            };
         write!(self.stdout,
-               "{}{}",
-               termion::clear::UntilNewline,
-               curr_text
+               "{}{}{}{}{}{}{}",
+               cursor::Goto(1, self.adjust_row(row, config)),
+               clear::UntilNewline,
+               color::Fg(color::Yellow),
+               row + 1,
+               color::Fg(color::Reset),
+               cursor::Goto(config.min_col(), self.adjust_row(row, config)),
+               curr_text,
               ).unwrap();
-        self.go_to(curr_row, curr_col, data, config);
+        self.rewind(data, config);
     }
     
     // here we dont assign to self.row/col, this way we can continue writing
@@ -125,7 +128,7 @@ impl Term {
     pub fn go_to_bottom(&mut self, config: &Config) {
         write!(self.stdout,
                "{}",
-               termion::cursor::Goto(1, config.height() + 2)
+               cursor::Goto(1, config.height() + 2)
               ).unwrap();
         self.stdout.flush().unwrap(); 
     }
@@ -146,35 +149,38 @@ impl Term {
         let term_row = self.adjust_row(self.row, config);
         write!(self.stdout,
                "{}",
-               termion::cursor::Goto(term_col, term_row)
+               cursor::Goto(term_col, term_row)
               ).unwrap();
         self.stdout.flush().unwrap();
     }
 
+    pub fn rewind(&mut self, data: &Data, config: &Config) {
+        self.go_to(self.row, self.col, data, config);
+    }
+
     pub fn draw_screen(&mut self, data: &Data, config: &Config) {
-        let (curr_row, curr_col) = (self.row, self.col);
-        for row in 0 .. data.len() {
-            self.draw_row(row as u16, data, config);
+        for row in self.vert_offset .. self.vert_offset + config.height() {
+            if row < data.len() as u16 {
+                self.draw_row(row, data, config);
+            } else {
+                write!(self.stdout,
+                       "{}{}~",
+                       cursor::Goto(1, self.adjust_row(row, config)),
+                       clear::UntilNewline
+                      ).unwrap();
+            }
         }
-        for row in data.len() ..= config.height() as usize {
-            write!(self.stdout,
-                   "{}{}~",
-                   termion::cursor::Goto(1, row as u16 + 1),
-                   termion::clear::UntilNewline
-                  ).unwrap();
-        }
-        self.go_to(curr_row, curr_col, data, config);
+        self.rewind(data, config);
     }
 
     pub fn set_message(&mut self, msg: &str, data: &Data, config: &Config) {
         self.go_to_bottom(config);
         write!(self.stdout,
                "{}{}",
-               termion::clear::UntilNewline,
+               clear::UntilNewline,
                msg,
               ).unwrap();
-        self.stdout.flush().unwrap();
-        self.go_to(self.row, self.col, data, config);
+        self.rewind(data, config);
     }
 
     /* Turn the terminal back from Raw mode and ends the program */
@@ -185,13 +191,13 @@ impl Term {
 
         write!(self.stdout,
                "{}{}{}{}",
-               termion::cursor::Show,
-               termion::clear::All,
-               termion::cursor::Goto(first_line_col as u16, 1),
+               cursor::Show,
+               clear::All,
+               cursor::Goto(first_line_col as u16, 1),
                goodbye_message
               ).unwrap();
 
-        write!(self.stdout, "{}", termion::cursor::Goto(1, 2)).unwrap();
+        write!(self.stdout, "{}", cursor::Goto(1, 2)).unwrap();
         self.stdout.flush().unwrap();
         self.stdout.suspend_raw_mode().unwrap();
 

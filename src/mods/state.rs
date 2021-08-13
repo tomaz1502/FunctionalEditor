@@ -65,7 +65,7 @@ impl State {
     }
 
     fn current_row(&mut self) -> &mut String {
-        self.data.get_row(self.term.row)
+        self.data.get_row_mut(self.term.row)
     }
 
     fn insert_row(&mut self, index: u16, row: String) {
@@ -94,18 +94,19 @@ impl State {
     }
 
     pub fn run_backspace(&mut self) {
-        if self.term.col > self.config.min_col() {
-            let rem_index = self.term.col - self.config.min_col() - 1;
+        if self.term.col > 0 {
+            let rem_index = self.term.col - 1;
             self.data.remove_char(self.term.row, rem_index);
             self.term.draw_row(self.term.row, &self.data, &self.config);
-            self.go_to(self.term.row, self.term.col - 1);
+            self.go_to(self.term.row, rem_index);
         } else if self.term.row > 0 {
-            let prev_len = self.data.get_row(self.term.row - 1).len();
+            let prev_row = self.term.row - 1;
+            let prev_len = self.data.get_row(prev_row).len();
             let curr_text = self.current_row().clone();
-            self.data.extend_row(self.term.row - 1, curr_text);
+            self.data.extend_row(prev_row, curr_text);
             self.data.remove(self.term.row);
             self.term.draw_screen(&self.data, &self.config);
-            self.go_to(self.term.row - 1, prev_len as u16);
+            self.go_to(prev_row, prev_len as u16);
         }
     }
 
