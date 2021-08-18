@@ -1,5 +1,6 @@
 use super::ColorsConfig;
 
+#[allow(non_upper_case_globals)]
 static HaskellKeywords: [&'static str; 17] =
     [ "as"
     , "case"
@@ -20,6 +21,7 @@ static HaskellKeywords: [&'static str; 17] =
     , "where"
     ];
 
+#[allow(non_upper_case_globals)]
 pub static HaskellConfig: ColorsConfig = ColorsConfig {
     is_keyword      : |word| HaskellKeywords.contains(&word),
     is_type_name    : |word| !word.is_empty() && word.chars().next().unwrap().is_uppercase(),
