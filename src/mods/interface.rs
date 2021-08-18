@@ -14,6 +14,7 @@ pub fn run(mut state: &mut State) {
 fn interpret_key(key: Key, state: &mut State) {
     match key {
         Key::Char('\x0A') => state.break_line(),
+        Key::Char('\t')   => (),
         Key::Char(c)      => state.place_char(c),
         Key::Backspace    => state.run_backspace(),
         Key::Left         => state.move_cursor(0, -1),

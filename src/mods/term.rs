@@ -5,13 +5,14 @@ use termion::*;
 
 use super::config::Config;
 use super::data::Data;
+use super::lib;
 
 pub struct Term {
-    pub row: u16,
-    pub col: u16,
-    pub vert_offset: u16,
-    pub hor_offset: u16,
-    pub stdout: raw::RawTerminal<std::io::Stdout>,
+    pub row     : u16,
+    pub col     : u16,
+    vert_offset : u16,
+    hor_offset  : u16,
+    stdout      : raw::RawTerminal<std::io::Stdout>,
 }
 
 impl Term {
@@ -86,6 +87,7 @@ impl Term {
         }
     }
 
+
     pub fn add_row(&mut self, data: &Data, config: &Config) {
         if data.len() as u16 <= config.height() + self.vert_offset {
             write!(self.stdout,
@@ -98,10 +100,21 @@ impl Term {
         }
     }
 
+    fn set_color(&mut self, from: &str) {
+        match from {
+            "yellow" => write!(self.stdout, "{}", color::Fg(color::Yellow)).unwrap(),
+            "green"  => write!(self.stdout, "{}", color::Fg(color::Green)).unwrap(),
+            "red"    => write!(self.stdout, "{}", color::Fg(color::Red)).unwrap(),
+            "blue"   => write!(self.stdout, "{}", color::Fg(color::Blue)).unwrap(),
+            "normal" => write!(self.stdout, "{}", color::Fg(color::Reset)).unwrap(),
+            _        => panic!("unknown color"),
+        }
+    }
+
     // Assumes row < data.len()
     pub fn draw_row(&mut self, row: u16, data: &Data, config: &Config) {
         let row_len = data.row_length(row);
-        let curr_text =
+        let curr_text: &str =
             if row_len >= self.hor_offset as usize {
                 let right_border =
                     std::cmp::min((self.hor_offset + config.width()) as usize,
@@ -111,15 +124,18 @@ impl Term {
                 ""
             };
         write!(self.stdout,
-               "{}{}{}{}{}{}{}",
+               "{}{}{}{}{}{}",
                cursor::Goto(1, self.adjust_row(row, config)),
                clear::UntilNewline,
                color::Fg(color::Yellow),
                row + 1,
                color::Fg(color::Reset),
-               cursor::Goto(config.min_col(), self.adjust_row(row, config)),
-               curr_text,
+               cursor::Goto(config.min_col(), self.adjust_row(row, config))
               ).unwrap();
+        for (word, whites) in lib::words_and_spaces(curr_text) {
+            self.set_color(&config.color_from_word(&word));
+            write!(self.stdout, "{}{}", word, whites).unwrap();
+        }
         self.rewind(data, config);
     }
     
@@ -159,16 +175,18 @@ impl Term {
     }
 
     pub fn draw_screen(&mut self, data: &Data, config: &Config) {
-        for row in self.vert_offset .. self.vert_offset + config.height() {
-            if row < data.len() as u16 {
+        let non_empty_rows = std::cmp::min(self.vert_offset + config.height()
+                                          ,data.len() as u16);
+        for row in self.vert_offset .. non_empty_rows {
                 self.draw_row(row, data, config);
-            } else {
-                write!(self.stdout,
-                       "{}{}~",
-                       cursor::Goto(1, self.adjust_row(row, config)),
-                       clear::UntilNewline
-                      ).unwrap();
-            }
+        }
+        write!(self.stdout, "{}", color::Fg(color::Reset)).unwrap();
+        for row in data.len() as u16 .. self.vert_offset + config.height() {
+            write!(self.stdout,
+                   "{}{}~",
+                   cursor::Goto(1, self.adjust_row(row, config)),
+                   clear::UntilNewline
+                  ).unwrap();
         }
         self.rewind(data, config);
     }
@@ -188,12 +206,12 @@ impl Term {
         let goodbye_message: &str = "Good Bye!";
         let first_line_col: usize =
               (config.width() as usize - goodbye_message.len()) / 2;
-
         write!(self.stdout,
-               "{}{}{}{}",
+               "{}{}{}{}{}",
                cursor::Show,
                clear::All,
                cursor::Goto(first_line_col as u16, 1),
+               color::Fg(color::Reset),
                goodbye_message
               ).unwrap();
 

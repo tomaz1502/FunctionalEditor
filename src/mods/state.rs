@@ -12,9 +12,9 @@ use super::term::Term;
 use super::interface::run_prompt;
 
 pub struct State {
-    pub term: Term,
-    pub data: Data,
-    pub config: Config,
+    term: Term,
+    data: Data,
+    config: Config,
 }
 
 impl State {
@@ -41,9 +41,7 @@ impl State {
             if input_text.is_empty() {
                 self.add_row(String::new());
             } else {
-                for line in input_text.lines() {
-                    self.add_row(line.chars().collect());
-                }
+                input_text.lines().for_each(|line| self.add_row(line.chars().collect()));
             }
             self.term.draw_screen(&self.data, &self.config);
         } else {
