@@ -107,7 +107,6 @@ impl Term {
             "red"    => write!(self.stdout, "{}", color::Fg(color::Red)).unwrap(),
             "blue"   => write!(self.stdout, "{}", color::Fg(color::Blue)).unwrap(),
             "white"  => write!(self.stdout, "{}", color::Fg(color::White)).unwrap(),
-            "normal" => write!(self.stdout, "{}", color::Fg(color::Reset)).unwrap(),
             _        => panic!("unknown color"),
         }
     }
@@ -133,9 +132,14 @@ impl Term {
                color::Fg(color::Reset),
                cursor::Goto(config.min_col(), self.adjust_row(row, config))
               ).unwrap();
-        for (word, whites) in lib::words_and_spaces(curr_text) {
+        for (word, whites) in lib::words_and_separators(curr_text) {
             self.set_color(&config.color_from_word(&word));
-            write!(self.stdout, "{}{}", word, whites).unwrap();
+            write!(self.stdout,
+                   "{}{}{}",
+                   word,
+                   color::Fg(color::Reset),
+                   whites)
+                  .unwrap();
         }
         self.rewind(data, config);
     }
@@ -249,7 +253,6 @@ impl Term {
         write!(self.stdout, "{}", cursor::Goto(1, 2)).unwrap();
         self.stdout.flush().unwrap();
         self.stdout.suspend_raw_mode().unwrap();
-
         process::exit(0);
     }
 }

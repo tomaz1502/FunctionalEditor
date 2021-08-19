@@ -40,7 +40,7 @@ pub fn run_prompt(msg: &str, state: &mut State) -> String {
             Key::Char(c)      => { buffer.insert(pointer, c); pointer += 1; }
             Key::Left         => { if pointer > 0            { pointer -= 1; } },
             Key::Right        => { if pointer < buffer.len() { pointer += 1; } },
-            Key::Backspace    => { buffer.remove(pointer); pointer -= 1; }
+            Key::Backspace    => { if pointer > 0 { pointer -= 1; buffer.remove(pointer); } }
             _ => ()
         }
         state.set_message(&format!("{}{}", msg, buffer)[..]);

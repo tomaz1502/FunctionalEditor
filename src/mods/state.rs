@@ -1,15 +1,15 @@
-use std::path::Path;
-use std::fs::File;
-use std::io::{stdout};
 use std::fs;
+use std::fs::File;
+use std::path::Path;
+use std::io::stdout;
 use std::io::Write;
 
 use termion::raw::IntoRawMode;
 
-use super::config::Config;
 use super::data::Data;
-use super::term::Term;
+use super::config::Config;
 use super::interface::run_prompt;
+use super::term::Term;
 
 pub struct State {
     term   : Term,
@@ -37,7 +37,7 @@ impl State {
     }
 
     fn handle_file(&mut self) {
-        if !self.config.file_name().is_empty() {
+        if Path::new(self.config.file_name()).exists() {
             let input_text = fs::read_to_string(&self.config.file_name()).unwrap();
             if input_text.is_empty() {
                 self.add_row(String::new());

@@ -1,4 +1,5 @@
 pub mod haskell;
+pub mod rust;
 
 #[derive(Clone, Copy)]
 pub struct ColorsConfig {

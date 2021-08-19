@@ -35,5 +35,5 @@ pub static HaskellConfig: ColorsConfig = ColorsConfig {
     num_color       : "red",
     type_name_color : "blue",
     keyword_color   : "green",
-    default_color   : "normal",
+    default_color   : "white",
 };

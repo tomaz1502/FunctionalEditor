@@ -1,9 +1,12 @@
-use super::languages::{ColorsConfig, haskell::HaskellConfig};
+use super::languages::{ ColorsConfig,
+                        haskell::HaskellConfig,
+                        rust::RustConfig };
 
 pub fn get_color_config(from: &String) -> ColorsConfig {
     match get_extension(from) {
         Some(ext) => match &ext[..] {
                         "hs" => HaskellConfig,
+                        "rs" => RustConfig,
                          _   => Default::default(),
                      },
         None      => Default::default(),
@@ -21,23 +24,27 @@ pub fn get_extension(file_name: &String) -> Option<String> {
     }
 }
 
-pub fn words_and_spaces(text: &str) -> Vec<(String, String)> {
-    let mut words_and_spaces = Vec::new();
+pub fn is_separator(ch: char) -> bool {
+    ch == ' ' || ch == '.' || ch == '(' || ch == ')'
+}
+
+pub fn words_and_separators(text: &str) -> Vec<(String, String)> {
+    let mut words_and_separators = Vec::new();
     let mut chunk = String::new();
-    let mut whitespaces = String::new();
+    let mut separators = String::new();
     for ch in text.chars() {
-        if ch.is_whitespace() {
-            whitespaces.push(ch);
+        if is_separator(ch) {
+            separators.push(ch);
         } else {
-            if whitespaces.is_empty() {
+            if separators.is_empty() {
                 chunk.push(ch);
             } else {
-                words_and_spaces.push((chunk.clone(), whitespaces.clone()));
+                words_and_separators.push((chunk.clone(), separators.clone()));
                 chunk = String::from(ch);
-                whitespaces.clear();
+                separators.clear();
             }
         }
     }
-    words_and_spaces.push((chunk.clone(), whitespaces.clone()));
-    words_and_spaces
+    words_and_separators.push((chunk.clone(), separators.clone()));
+    words_and_separators
 }
