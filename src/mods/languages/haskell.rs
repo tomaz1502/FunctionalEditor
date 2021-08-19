@@ -1,9 +1,8 @@
 use super::ColorsConfig;
 
 #[allow(non_upper_case_globals)]
-static HaskellKeywords: [&'static str; 17] =
-    [ "as"
-    , "case"
+static HaskellKeywords: [&'static str; 24] =
+    [ "case"
     , "class"
     , "data"
     , "deriving"
@@ -12,10 +11,18 @@ static HaskellKeywords: [&'static str; 17] =
     , "family"
     , "forall"
     , "foreign"
+    , "hiding"
     , "if"
+    , "infix"
+    , "infixl"
+    , "infixr"
     , "import"
     , "instance"
     , "let"
+    , "module"
+    , "newtype"
+    , "of"
+    , "qualified"
     , "then"
     , "type"
     , "where"
