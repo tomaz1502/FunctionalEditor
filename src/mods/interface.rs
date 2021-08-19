@@ -7,6 +7,8 @@ use super::state::State;
 
 pub fn run(mut state: &mut State) {
     for key in io::stdin().keys() {
+        state.set_message("");
+        state.draw_status_line();
         interpret_key(key.unwrap(), &mut state);
     }
 }

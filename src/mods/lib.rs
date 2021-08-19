@@ -1,3 +1,15 @@
+use super::languages::{ColorsConfig, haskell::HaskellConfig};
+
+pub fn get_color_config(from: &String) -> ColorsConfig {
+    match get_extension(from) {
+        Some(ext) => match &ext[..] {
+                        "hs" => HaskellConfig,
+                         _   => Default::default(),
+                     },
+        None      => Default::default(),
+    }
+}
+
 pub fn get_extension(file_name: &String) -> Option<String> {
     let words = file_name.split(".")
                          .map(|word| word.to_string())

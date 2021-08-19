@@ -83,7 +83,7 @@ impl Term {
         }
 
         if changed_offset {
-            self.draw_screen(data, config);
+            self.draw_text(data, config);
         }
     }
 
@@ -106,6 +106,7 @@ impl Term {
             "green"  => write!(self.stdout, "{}", color::Fg(color::Green)).unwrap(),
             "red"    => write!(self.stdout, "{}", color::Fg(color::Red)).unwrap(),
             "blue"   => write!(self.stdout, "{}", color::Fg(color::Blue)).unwrap(),
+            "white"  => write!(self.stdout, "{}", color::Fg(color::White)).unwrap(),
             "normal" => write!(self.stdout, "{}", color::Fg(color::Reset)).unwrap(),
             _        => panic!("unknown color"),
         }
@@ -139,16 +140,6 @@ impl Term {
         self.rewind(data, config);
     }
     
-    // here we dont assign to self.row/col, this way we can continue writing
-    // from the same place as before
-    pub fn go_to_bottom(&mut self, config: &Config) {
-        write!(self.stdout,
-               "{}",
-               cursor::Goto(1, config.height() + 2)
-              ).unwrap();
-        self.stdout.flush().unwrap(); 
-    }
-
     pub fn move_cursor(&mut self, row_delta: i16, col_delta: i16, data: &Data, config: &Config) {
         let real_col_delta = std::cmp::max(col_delta, -(self.col as i16));
         let real_row_delta = std::cmp::max(row_delta, -(self.row as i16));
@@ -174,7 +165,7 @@ impl Term {
         self.go_to(self.row, self.col, data, config);
     }
 
-    pub fn draw_screen(&mut self, data: &Data, config: &Config) {
+    pub fn draw_text(&mut self, data: &Data, config: &Config) {
         let non_empty_rows = std::cmp::min(self.vert_offset + config.height()
                                           ,data.len() as u16);
         for row in self.vert_offset .. non_empty_rows {
@@ -192,11 +183,51 @@ impl Term {
     }
 
     pub fn set_message(&mut self, msg: &str, data: &Data, config: &Config) {
-        self.go_to_bottom(config);
         write!(self.stdout,
-               "{}{}",
+               "{}{}{}{}",
+               cursor::Goto(1, config.height() + 2),
                clear::UntilNewline,
+               color::Fg(color::Reset),
                msg,
+              ).unwrap();
+        self.rewind(data, config);
+    }
+
+    pub fn draw_status_line(&mut self, data: &Data, config: &Config) {
+        let displayed_name = if config.file_name().is_empty() {
+            "[No Name]".to_string()
+        } else {
+            config.file_name().clone()
+        };
+
+        let pos_info = "L: ".to_string()       +
+                       &self.row.to_string()   +
+                       "/"                     +
+                       &data.len().to_string() +
+                       "  |  C: "              +
+                       &self.col.to_string()   +
+                       "/"                     +
+                       &data.row_length(self.row).to_string();
+
+        if config.width() <= (displayed_name.len() + pos_info.len()) as u16 {
+            panic!("terminal too thin!");
+        }
+
+        let rem_space =
+          config.width() as usize - displayed_name.len() - pos_info.len();
+        let middle: String =
+            std::iter::repeat(" ").take(rem_space as usize).collect();
+
+        let text = displayed_name + &middle + &pos_info;
+        write!(self.stdout,
+               "{}{}{}{}{}{}{}",
+               cursor::Goto(1, config.height() + 1),
+               clear::UntilNewline,
+               color::Bg(color::White),
+               color::Fg(color::Black),
+               text,
+               color::Bg(color::Reset),
+               color::Fg(color::Reset),
               ).unwrap();
         self.rewind(data, config);
     }

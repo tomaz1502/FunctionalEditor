@@ -1,10 +1,8 @@
-use super::lib::get_extension;
-
+use super::lib;
 use super::languages::ColorsConfig;
-use super::languages::haskell::HaskellConfig;
 
 pub struct Config {
-    pub file_name : Option<String>,
+    file_name     : String,
     width         : u16,
     height        : u16,
     min_col       : u16,
@@ -20,11 +18,11 @@ impl Config {
         }
 
         let file_name = match args.len() {
-            2 => Some(args[1].clone()),
-            _ => None
+            2 => args[1].clone(),
+            _ => "".to_string(),
         };
 
-        let colors_cfg = HaskellConfig;
+        let colors_cfg = lib::get_color_config(&file_name);
 
         Ok(Config {
             file_name,
@@ -34,17 +32,6 @@ impl Config {
             min_row: 1,
             colors_cfg,
         })
-    }
-
-    pub fn set_filename(&mut self, name: &String) {
-        self.file_name = Some(name.clone());
-        self.colors_cfg = match get_extension(name) {
-            Some(ext) => match &ext[..] {
-                            "hs" => HaskellConfig,
-                            _    => HaskellConfig,
-                         },
-            None    => HaskellConfig,
-        };
     }
 
     pub fn height(&self) -> u16 {
@@ -62,6 +49,16 @@ impl Config {
     pub fn min_row(&self) -> u16 {
         self.min_row
     }
+
+    pub fn file_name(&self) -> &String {
+        &self.file_name
+    }
+
+    pub fn set_file_name(&mut self, name: &String) {
+        self.file_name = name.to_string();
+        self.colors_cfg = lib::get_color_config(name);
+    }
+
 
     pub fn color_from_word(&self, word: &String) -> &'static str {
         let all_digits = word.chars().all(|c| c.is_digit(10));

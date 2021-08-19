@@ -12,9 +12,9 @@ use super::term::Term;
 use super::interface::run_prompt;
 
 pub struct State {
-    term: Term,
-    data: Data,
-    config: Config,
+    term   : Term,
+    data   : Data,
+    config : Config,
 }
 
 impl State {
@@ -31,19 +31,21 @@ impl State {
         let mut state = State::new(config);
         state.term.start(&state.config);
         state.handle_file();
+        state.draw_status_line();
         state.go_to(0, 0);
         state
     }
 
     fn handle_file(&mut self) {
-        if let Some(file_name) = &mut self.config.file_name {
-            let input_text = fs::read_to_string(file_name).unwrap();
+        if !self.config.file_name().is_empty() {
+            let input_text = fs::read_to_string(&self.config.file_name()).unwrap();
             if input_text.is_empty() {
                 self.add_row(String::new());
             } else {
-                input_text.lines().for_each(|line| self.add_row(line.chars().collect()));
+                input_text.lines()
+                          .for_each(|line| self.add_row(line.chars().collect()));
             }
-            self.term.draw_screen(&self.data, &self.config);
+            self.term.draw_text(&self.data, &self.config);
         } else {
             // we need at least one row, otherwise it won't be possible to write
             self.add_row(String::new());
@@ -51,15 +53,20 @@ impl State {
     }
     
     pub fn save_file(&mut self) {
-        let file_name = match &self.config.file_name {
-            Some(file_name) => file_name.clone(),
-            None            => run_prompt("Enter the file name: ", self)
+        let file_name =
+        if !self.config.file_name().is_empty() {
+            self.config.file_name().clone()
+        } else {
+            let name = run_prompt("Enter the file name: ", self);
+            self.config.set_file_name(&name);
+            name
         };
         let editor_text = self.data.to_string();
         let mut file = File::create(Path::new(&file_name)).unwrap();
 
         file.write(editor_text.as_bytes()).unwrap();
         self.set_message(&format!("File {} written.", file_name)[..]);
+        self.term.draw_text(&self.data, &self.config);
     }
 
     fn current_row(&mut self) -> &mut String {
@@ -87,7 +94,7 @@ impl State {
             self.current_row()[col ..].to_string();
         self.data.truncate_row(self.term.row, self.term.col);
         self.insert_row(self.term.row + 1, chars);
-        self.term.draw_screen(&self.data, &self.config);
+        self.term.draw_text(&self.data, &self.config);
         self.go_to(self.term.row + 1, 0);
     }
 
@@ -103,7 +110,7 @@ impl State {
             let curr_text = self.current_row().clone();
             self.data.extend_row(prev_row, curr_text);
             self.data.remove(self.term.row);
-            self.term.draw_screen(&self.data, &self.config);
+            self.term.draw_text(&self.data, &self.config);
             self.go_to(prev_row, prev_len as u16);
         }
     }
@@ -123,6 +130,10 @@ impl State {
     
     pub fn set_message(&mut self, msg: &str) {
         self.term.set_message(msg, &self.data, &self.config);
+    }
+
+    pub fn draw_status_line(&mut self) {
+        self.term.draw_status_line(&self.data, &self.config);
     }
 
     pub fn die(&mut self) {
